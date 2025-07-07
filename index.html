@@ -36,10 +36,12 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       color: #333;
     }
-    /* Larger count number */
+    /* Larger count number, centered */
     .count {
       font-size: 3rem;
       font-weight: bold;
+      margin: 0.5rem 0;
+      text-align: center;
     }
     /* Error text */
     .error {
@@ -81,10 +83,10 @@
         const timePart = lastCheckedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         statusEl.innerHTML = `
-          📡 <strong>Target:</strong> ${data.target}<br>
-          ✅ <strong>Has been up for</strong>
-            <span class="count">⏰ ${data.hoursUp}</span> hour${data.hoursUp === 1 ? '' : 's'}<br>
-          🕒 <strong>Last checked:</strong> ${datePart} ${timePart}
+          <div>📡 <strong>Target:</strong> ${data.target}</div>
+          <div>✅ <strong>Has been up for</strong></div>
+          <div class="count">${data.hoursUp} hour${data.hoursUp === 1 ? '' : 's'}</div>
+          <div>🕒 <strong>Last checked:</strong> ${datePart} ${timePart}</div>
         `;
       })
       .catch(err => {
