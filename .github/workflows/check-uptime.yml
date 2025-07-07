@@ -1,9 +1,10 @@
-name: Daily uptime check
+name: Hourly uptime check
 
 on:
   schedule:
-    - cron: '0 0 * * *'
-  workflow_dispatch:
+    # every hour at minute 0 UTC
+    - cron: '0 * * * *'
+  workflow_dispatch:    # manual trigger available
 
 jobs:
   check:
@@ -30,18 +31,19 @@ import json, datetime, os
 with open('status.json') as f:
     data = json.load(f)
 
-# Today’s date
-today = datetime.date.today().isoformat()
+# Ensure hoursUp exists
+data.setdefault('hoursUp', 0)
 
 # Increment or reset
 if os.environ.get('STATUS') == '200':
-    data['daysUp'] += 1
+    data['hoursUp'] += 1
 else:
-    data['daysUp'] = 0
+    data['hoursUp'] = 0
 
-data['lastChecked'] = today
+# UTC ISO timestamp
+data['lastChecked'] = datetime.datetime.utcnow().isoformat() + 'Z'
 
-# Save
+# Save back
 with open('status.json', 'w') as f:
     json.dump(data, f, indent=2)
 EOF
@@ -52,7 +54,7 @@ EOF
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if [[ -n "$(git status --porcelain)" ]]; then
             git add status.json
-            git commit -m "chore: update uptime counter"
+            git commit -m "chore: hourly uptime update"
             git push
           else
             echo "No changes to commit"
