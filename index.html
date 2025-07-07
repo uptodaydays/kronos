@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Uptime monitor for https://qa-sync-kronos-nextgen.st.dev/</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Uptime monitor for qa-sync-kronos-nextgen.st.dev</title>
   <style>
     body {
       font-family: sans-serif;
@@ -12,9 +12,16 @@
       line-height: 1.5;
       padding: 0 1rem;
     }
+    header img {
+      width: 100%;
+      height: auto;
+      display: block;
+      margin-bottom: 1rem;
+    }
     h1 {
       font-size: 1.75rem;
       margin-bottom: 0.5rem;
+      text-align: center;
     }
     #status {
       margin-top: 1.5rem;
@@ -22,6 +29,7 @@
       border: 1px solid #ddd;
       border-radius: 4px;
       background: #f9f9f9;
+      text-align: center;
     }
     .count {
       font-size: 2rem;
@@ -33,21 +41,36 @@
   </style>
 </head>
 <body>
+  <header>
+    <!-- Make sure banner3.png and status.json are in the same directory as this file -->
+    <img src="banner3.png" alt="Isometric dashboard uptime banner">
+  </header>
   <h1>Uptime monitor for <code>test.com</code></h1>
   <div id="status">Loading…</div>
 
+  <noscript>
+    <div class="error">
+      JavaScript is disabled. Please enable JS to view uptime status.
+    </div>
+  </noscript>
+
   <script>
-    // Fetch the JSON file sitting next to this HTML
-    fetch('status.json')
+    // Try to fetch the JSON next to this HTML
+    const statusEl = document.getElementById('status');
+    fetch(new URL('./status.json', window.location.href))
       .then(response => {
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          throw new Error(`Could not fetch status.json (HTTP ${response.status})`);
         }
         return response.json();
       })
       .then(data => {
-        // Render the status
-        document.getElementById('status').innerHTML = `
+        // Validate essential fields
+        if (!data.target || typeof data.daysUp !== 'number' || !data.lastChecked) {
+          throw new Error('status.json has unexpected format');
+        }
+        // Render the status block
+        statusEl.innerHTML = `
           📡 <strong>Target:</strong> ${data.target}<br>
           ✅ <strong>Has been up for</strong>
             <span class="count">${data.daysUp}</span>
@@ -56,12 +79,14 @@
         `;
       })
       .catch(err => {
-        // Show errors in a user‑friendly way
-        document.getElementById('status').innerHTML = `
-          <span class="error">❌ Error loading status.json:</span>
-          ${err.message}
+        console.error('Error loading/parsing status.json:', err);
+        statusEl.innerHTML = `
+          <div class="error">
+            ❌ Unable to load uptime data.<br>
+            ${err.message}<br>
+            <small>Ensure <code>status.json</code> exists and is valid JSON.</small>
+          </div>
         `;
-        console.error('Failed to load or parse status.json:', err);
       });
   </script>
 </body>
