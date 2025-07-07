@@ -3,44 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Uptime monitor for qa-sync-kronos-nextgen.st.dev</title>
+  <title>🚀 Uptime monitor for Kronos</title>
   <style>
+    /* Center everything and set a light background */
     body {
       font-family: sans-serif;
-      max-width: 600px;
-      margin: 2rem auto;
-      line-height: 1.5;
-      padding: 0 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      background: #f0f4f8;
+      margin: 0;
+      padding: 2rem;
+      min-height: 100vh;
+      text-align: center;
     }
+    /* Main heading styling */
     h1 {
-      font-size: 1.75rem;
-      margin-bottom: 0.5rem;
-      text-align: center;
+      font-size: 2.5rem;
+      margin-bottom: 1.5rem;
+      color: #333;
     }
+    /* Status box styling */
     #status {
-      margin-top: 1.5rem;
-      padding: 1rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background: #f9f9f9;
-      text-align: center;
+      width: 100%;
+      max-width: 400px;
+      font-size: 1.25rem;
+      margin-top: 1rem;
+      padding: 1.5rem;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      color: #333;
     }
+    /* Larger count number */
     .count {
-      font-size: 2rem;
+      font-size: 3rem;
       font-weight: bold;
     }
+    /* Error text */
     .error {
       color: #c00;
+      font-size: 1rem;
+    }
+    /* Noscript notice */
+    noscript .error {
+      font-size: 1rem;
     }
   </style>
 </head>
 <body>
-    <h1>Uptime monitor for <code>qa-sync-kronos-nextgen.st.dev</code></h1>
+  <h1>🚀 Uptime monitor for Kronos</h1>
   <div id="status">Loading…</div>
 
   <noscript>
     <div class="error">
-      JavaScript is disabled. Please enable JS to view uptime status.
+      ⚠️ JavaScript is disabled. Please enable JS to view uptime status.
     </div>
   </noscript>
 
@@ -57,18 +75,23 @@
         if (!data.target || typeof data.hoursUp !== 'number' || !data.lastChecked) {
           throw new Error('status.json has unexpected format');
         }
+        // Format date and time
+        const lastCheckedDate = new Date(data.lastChecked);
+        const datePart = lastCheckedDate.toLocaleDateString();
+        const timePart = lastCheckedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
         statusEl.innerHTML = `
           📡 <strong>Target:</strong> ${data.target}<br>
           ✅ <strong>Has been up for</strong>
-            <span class="count">${data.hoursUp}</span> hour${data.hoursUp === 1 ? '' : 's'}<br>
-          🔄 <strong>Last checked:</strong> ${new Date(data.lastChecked).toLocaleString()}
+            <span class="count">⏰ ${data.hoursUp}</span> hour${data.hoursUp === 1 ? '' : 's'}<br>
+          🕒 <strong>Last checked:</strong> ${datePart} ${timePart}
         `;
       })
       .catch(err => {
         console.error('Error loading/parsing status.json:', err);
         statusEl.innerHTML = `
           <div class="error">
-            ❌ Unable to load uptime data.<br>
+            🛑 ❌ Unable to load uptime data.<br>
             ${err.message}<br>
             <small>Ensure <code>status.json</code> exists and is valid JSON.</small>
           </div>
