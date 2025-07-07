@@ -1,0 +1,59 @@
+name: Daily uptime check
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v3
+
+      - name: 🌐 Check target status
+        id: http
+        run: |
+          TARGET=$(jq -r .target status.json)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$TARGET")
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+      - name: ⚙️ Update status.json
+        run: |
+          export STATUS=${{ steps.http.outputs.status }}
+          python3 - << 'EOF'
+import json, datetime, os
+
+# Load existing data
+with open('status.json') as f:
+    data = json.load(f)
+
+# Today’s date
+today = datetime.date.today().isoformat()
+
+# Increment or reset
+if os.environ.get('STATUS') == '200':
+    data['daysUp'] += 1
+else:
+    data['daysUp'] = 0
+
+data['lastChecked'] = today
+
+# Save
+with open('status.json', 'w') as f:
+    json.dump(data, f, indent=2)
+EOF
+
+      - name: ✏️ Commit & push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git add status.json
+            git commit -m "chore: update uptime counter"
+            git push
+          else
+            echo "No changes to commit"
+          fi
