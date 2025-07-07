@@ -3,10 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Site Uptime Monitor</title>
+  <title>Uptime monitor for random website </title>
   <style>
-    body { font-family: sans-serif; padding: 2rem; }
-    .count { font-size: 2rem; margin-top: 1rem; }
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      line-height: 1.5;
+      padding: 0 1rem;
+    }
+    h1 {
+      font-size: 1.75rem;
+      margin-bottom: 0.5rem;
+    }
+    #status {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #f9f9f9;
+    }
+    .count {
+      font-size: 2rem;
+      font-weight: bold;
+    }
+    .error {
+      color: #c00;
+    }
   </style>
 </head>
 <body>
@@ -14,18 +37,31 @@
   <div id="status">Loading…</div>
 
   <script>
-    fetch('/status.json')
-      .then(r => r.json())
+    // Fetch the JSON file sitting next to this HTML
+    fetch('status.json')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
+        // Render the status
         document.getElementById('status').innerHTML = `
-          📡 Target: <strong>${data.target}</strong><br/>
-          ✅ Has been up for <span class="count">${data.daysUp}</span> day${data.daysUp === 1 ? '' : 's'}<br/>
-          🔄 Last checked: ${data.lastChecked}
+          📡 <strong>Target:</strong> ${data.target}<br>
+          ✅ <strong>Has been up for</strong>
+            <span class="count">${data.daysUp}</span>
+            day${data.daysUp === 1 ? '' : 's'}<br>
+          🔄 <strong>Last checked:</strong> ${data.lastChecked}
         `;
       })
       .catch(err => {
-        document.getElementById('status').textContent =
-          '❌ Error loading status.json: ' + err;
+        // Show errors in a user‑friendly way
+        document.getElementById('status').innerHTML = `
+          <span class="error">❌ Error loading status.json:</span>
+          ${err.message}
+        `;
+        console.error('Failed to load or parse status.json:', err);
       });
   </script>
 </body>
