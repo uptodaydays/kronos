@@ -12,12 +12,6 @@
       line-height: 1.5;
       padding: 0 1rem;
     }
-    header img {
-      width: 100%;
-      height: auto;
-      display: block;
-      margin-bottom: 1rem;
-    }
     h1 {
       font-size: 1.75rem;
       margin-bottom: 0.5rem;
@@ -41,11 +35,7 @@
   </style>
 </head>
 <body>
-<!--   <header>
-    <!-- Make sure banner3.png and status.json are in the same directory as this file -->
-    <img src="banner3.png" alt="Isometric dashboard uptime banner">
-  </header> -->
-  <h1>Uptime monitor for <code>qa-sync-kronos-nextgen.st.dev</code></h1>
+    <h1>Uptime monitor for <code>qa-sync-kronos-nextgen.st.dev</code></h1>
   <div id="status">Loading…</div>
 
   <noscript>
@@ -55,7 +45,6 @@
   </noscript>
 
   <script>
-    // Try to fetch the JSON next to this HTML
     const statusEl = document.getElementById('status');
     fetch(new URL('./status.json', window.location.href))
       .then(response => {
@@ -65,17 +54,14 @@
         return response.json();
       })
       .then(data => {
-        // Validate essential fields
-        if (!data.target || typeof data.daysUp !== 'number' || !data.lastChecked) {
+        if (!data.target || typeof data.hoursUp !== 'number' || !data.lastChecked) {
           throw new Error('status.json has unexpected format');
         }
-        // Render the status block
         statusEl.innerHTML = `
           📡 <strong>Target:</strong> ${data.target}<br>
           ✅ <strong>Has been up for</strong>
-            <span class="count">${data.daysUp}</span>
-            day${data.daysUp === 1 ? '' : 's'}<br>
-          🔄 <strong>Last checked:</strong> ${data.lastChecked}
+            <span class="count">${data.hoursUp}</span> hour${data.hoursUp === 1 ? '' : 's'}<br>
+          🔄 <strong>Last checked:</strong> ${new Date(data.lastChecked).toLocaleString()}
         `;
       })
       .catch(err => {
