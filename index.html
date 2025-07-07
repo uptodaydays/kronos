@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Site Uptime Monitor</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    .count { font-size: 2rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Uptime monitor for <code>test.com</code></h1>
+  <div id="status">Loading…</div>
+
+  <script>
+    fetch('/status.json')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('status').innerHTML = `
+          📡 Target: <strong>${data.target}</strong><br/>
+          ✅ Has been up for <span class="count">${data.daysUp}</span> day${data.daysUp === 1 ? '' : 's'}<br/>
+          🔄 Last checked: ${data.lastChecked}
+        `;
+      })
+      .catch(err => {
+        document.getElementById('status').textContent =
+          '❌ Error loading status.json: ' + err;
+      });
+  </script>
+</body>
+</html>
