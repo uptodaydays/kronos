@@ -22,10 +22,11 @@
       font-size: 1.25rem; padding: 1.5rem;
       border-radius: 8px; background: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
     }
     .count { font-size: 3rem; font-weight: bold; margin: .5rem 0; }
     #leaderboard-section { width:100%; max-width:400px; margin-top:2rem; text-align:left; }
-    #leaderboard-section h2 { font-size:1.5rem; }
+    #leaderboard-section h2 { font-size:1.5rem; margin-bottom: .5rem; }
     #leaderboard-section ol { padding-left:1.5rem; }
     .error { color: #c00; }
   </style>
@@ -33,6 +34,7 @@
 <body>
   <h1>🚀 Uptime monitor for Kronos</h1>
   <div id="status">Loading…</div>
+
   <div id="leaderboard-section">
     <h2>🏆 Top 10 Max Uptimes</h2>
     <ol id="leaderboard"><li>Loading…</li></ol>
@@ -51,39 +53,48 @@
 
     // Load uptime status
     fetch('status.json')
-      .then(r=>r.ok? r.json(): Promise.reject(r.status))
-      .then(data=>{
-        const baseSec = data.hoursUp*3600;
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => {
+        const baseSec = data.hoursUp * 3600;
         const last = new Date(data.lastChecked);
-        function upd(){
-          const elapsed = Math.floor((Date.now()-last)/1000);
+        function upd() {
+          const elapsed = Math.floor((Date.now() - last) / 1000);
           const total = baseSec + elapsed;
           statusEl.innerHTML = `
-            📡 <strong>Target:</strong> ${data.target}<br>
-            ✅ <strong>Has been up for</strong><br>
+            <div>📡 <strong>Target:</strong></div>
+            <div>${data.target}</div>
+            <div>✅ <strong>Has been up for</strong></div>
             <div class="count">${fmtHMS(total)}</div>
-            🕒 <strong>Last checked:</strong> ${last.toLocaleString()}
+            <div>🕒 <strong>Last checked:</strong> ${last.toLocaleString()}</div>
           `;
         }
         upd();
-        setInterval(upd,1000);
+        setInterval(upd, 1000);
       })
-      .catch(e=> statusEl.textContent=`🛑 Error: ${e}`);
+      .catch(e => {
+        statusEl.textContent = `🛑 Error: ${e}`;
+        console.error(e);
+      });
 
     // Load leaderboard
     fetch('history.json')
-      .then(r=>r.ok? r.json(): Promise.reject(r.status))
-      .then(hist=>{
-        hist.sort((a,b)=>b.seconds - a.seconds);
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(hist => {
+        // De-duplicate by timestamp
+        const unique = Array.from(new Map(hist.map(e => [e.lastChecked, e])).values());
+        unique.sort((a, b) => b.seconds - a.seconds);
         lbEl.innerHTML = '';
-        hist.slice(0,10).forEach(entry=>{
-          const dt=new Date(entry.lastChecked);
-          const li=document.createElement('li');
+        unique.slice(0, 10).forEach(entry => {
+          const dt = new Date(entry.lastChecked);
+          const li = document.createElement('li');
           li.textContent = `${fmtHMS(entry.seconds)} on ${dt.toLocaleString()}`;
           lbEl.appendChild(li);
         });
       })
-      .catch(e=> lbEl.textContent=`⚠️ Leaderboard error: ${e}`);
+      .catch(e => {
+        lbEl.textContent = `⚠️ Leaderboard error: ${e}`;
+        console.error(e);
+      });
   </script>
 </body>
 </html>
