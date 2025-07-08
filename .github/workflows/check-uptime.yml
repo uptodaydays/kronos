@@ -2,9 +2,9 @@ name: Hourly uptime check
 
 on:
   schedule:
-    # every hour at minute 0 UTC
+    # Runs every hour at minute 0 UTC
     - cron: '0 * * * *'
-  workflow_dispatch:    # manual trigger available
+  workflow_dispatch:
 
 jobs:
   check:
