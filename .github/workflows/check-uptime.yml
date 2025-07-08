@@ -2,13 +2,14 @@ name: Hourly uptime check
 
 on:
   schedule:
-    # Runs every hour at minute 0 UTC
+    # Runs every hour at minute 0 UTC
     - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
   check:
     runs-on: ubuntu-latest
+
     steps:
       - name: 📥 Checkout repo
         uses: actions/checkout@v3
@@ -23,13 +24,16 @@ jobs:
       - name: ⚙️ Update status.json with jq
         run: |
           STATUS=${{ steps.http.outputs.status }}
+          # read current hoursUp or default to 0
           HOURS=$(jq '.hoursUp // 0' status.json)
           if [ "$STATUS" = "200" ]; then
             HOURS=$((HOURS + 1))
           else
             HOURS=0
           fi
+          # get UTC timestamp
           DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          # write back hoursUp and lastChecked
           jq --arg hours "$HOURS" --arg lastChecked "$DATE" \
              '.hoursUp = ($hours|tonumber) | .lastChecked = $lastChecked' \
              status.json > status.tmp.json
