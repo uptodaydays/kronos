@@ -5,118 +5,85 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>🚀 Uptime monitor for Kronos</title>
   <style>
-    /* Center everything and set a light background */
     body {
       font-family: sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
       background: #f0f4f8;
       margin: 0;
       padding: 2rem;
       min-height: 100vh;
       text-align: center;
     }
-    /* Main heading styling */
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 1.5rem;
-      color: #333;
-    }
-    /* Status box styling */
+    h1 { font-size: 2.5rem; margin-bottom: 1.5rem; }
     #status {
-      width: 100%;
-      max-width: 400px;
-      font-size: 1.25rem;
-      margin-top: 1rem;
-      padding: 1.5rem;
-      border-radius: 8px;
-      background: #ffffff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      color: #333;
+      width: 100%; max-width: 400px;
+      font-size: 1.25rem; padding: 1.5rem;
+      border-radius: 8px; background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    /* Larger count number, centered */
-    .count {
-      font-size: 3rem;
-      font-weight: bold;
-      margin: 0.5rem 0;
-      text-align: center;
-    }
-    /* Error text */
-    .error {
-      color: #c00;
-      font-size: 1rem;
-    }
-    /* Noscript notice */
-    noscript .error {
-      font-size: 1rem;
-    }
+    .count { font-size: 3rem; font-weight: bold; margin: .5rem 0; }
+    #leaderboard-section { width:100%; max-width:400px; margin-top:2rem; text-align:left; }
+    #leaderboard-section h2 { font-size:1.5rem; }
+    #leaderboard-section ol { padding-left:1.5rem; }
+    .error { color: #c00; }
   </style>
 </head>
 <body>
   <h1>🚀 Uptime monitor for Kronos</h1>
   <div id="status">Loading…</div>
-
-  <noscript>
-    <div class="error">
-      ⚠️ JavaScript is disabled. Please enable JS to view uptime status.
-    </div>
-  </noscript>
+  <div id="leaderboard-section">
+    <h2>🏆 Top 10 Max Uptimes</h2>
+    <ol id="leaderboard"><li>Loading…</li></ol>
+  </div>
 
   <script>
     const statusEl = document.getElementById('status');
-    fetch(new URL('./status.json', window.location.href))
-      .then(response => {
-        if (!response.ok) throw new Error(`Could not fetch status.json (HTTP ${response.status})`);
-        return response.json();
-      })
-      .then(data => {
-        if (!data.target || typeof data.hoursUp !== 'number' || !data.lastChecked) {
-          throw new Error('status.json has unexpected format');
-        }
+    const lbEl = document.getElementById('leaderboard');
 
-        // Base values
-        const target = data.target;
-        const baseHours = data.hoursUp;
-        const lastCheckedDate = new Date(data.lastChecked);
+    function fmtHMS(sec) {
+      const h = String(Math.floor(sec/3600)).padStart(2,'0');
+      const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
+      const s = String(sec%60).padStart(2,'0');
+      return `${h}:${m}:${s}`;
+    }
 
-        function updateDisplay() {
-          const now = new Date();
-          // Total seconds since lastChecked plus base hours
-          const elapsedMs = now - lastCheckedDate;
-          const elapsedSec = Math.floor(elapsedMs / 1000);
-          const totalSeconds = baseHours * 3600 + elapsedSec;
-
-          const hours = Math.floor(totalSeconds / 3600);
-          const minutes = Math.floor((totalSeconds % 3600) / 60);
-          const seconds = totalSeconds % 60;
-
-          // Format two-digit minutes/seconds
-          const mm = String(minutes).padStart(2, '0');
-          const ss = String(seconds).padStart(2, '0');
-
+    // Load uptime status
+    fetch('status.json')
+      .then(r=>r.ok? r.json(): Promise.reject(r.status))
+      .then(data=>{
+        const baseSec = data.hoursUp*3600;
+        const last = new Date(data.lastChecked);
+        function upd(){
+          const elapsed = Math.floor((Date.now()-last)/1000);
+          const total = baseSec + elapsed;
           statusEl.innerHTML = `
-            <div>📡 <strong>Target:</strong> ${target}</div>
-            <div>✅ <strong>Has been up for</strong></div>
-            <div class="count">${hours}h ${mm}m ${ss}s</div>
-            <div>🕒 <strong>Last checked:</strong> ${lastCheckedDate.toLocaleString()}</div>
+            📡 <strong>Target:</strong> ${data.target}<br>
+            ✅ <strong>Has been up for</strong><br>
+            <div class="count">${fmtHMS(total)}</div>
+            🕒 <strong>Last checked:</strong> ${last.toLocaleString()}
           `;
         }
-
-        updateDisplay();
-        setInterval(updateDisplay, 1000);
+        upd();
+        setInterval(upd,1000);
       })
-      .catch(err => {
-        console.error('Error loading/parsing status.json:', err);
-        statusEl.innerHTML = `
-          <div class="error">
-            🛑 ❌ Unable to load uptime data.<br>
-            ${err.message}<br>
-            <small>Ensure <code>status.json</code> exists and is valid JSON.</small>
-          </div>
-        `;
-      });
+      .catch(e=> statusEl.textContent=`🛑 Error: ${e}`);
+
+    // Load leaderboard
+    fetch('history.json')
+      .then(r=>r.ok? r.json(): Promise.reject(r.status))
+      .then(hist=>{
+        hist.sort((a,b)=>b.seconds - a.seconds);
+        lbEl.innerHTML = '';
+        hist.slice(0,10).forEach(entry=>{
+          const dt=new Date(entry.lastChecked);
+          const li=document.createElement('li');
+          li.textContent = `${fmtHMS(entry.seconds)} on ${dt.toLocaleString()}`;
+          lbEl.appendChild(li);
+        });
+      })
+      .catch(e=> lbEl.textContent=`⚠️ Leaderboard error: ${e}`);
   </script>
 </body>
 </html>
