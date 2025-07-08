@@ -29,6 +29,14 @@ jobs:
 
       - name: ⚙️ Update uptime files
         run: |
+          # Capture previous timestamp
+          LAST_CHECKED=$(jq -r .lastChecked status.json)
+          # Compute current timestamp
+          NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          # Parse into epoch seconds
+          LAST_SEC=$(date -u -d "$LAST_CHECKED" +%s)
+          NOW_SEC=$(date -u -d "$NOW" +%s)
+
           STATUS=${{ steps.http.outputs.status }}
           HOURS=$(jq '.hoursUp // 0' status.json)
           # Treat any 2xx or 3xx as up
@@ -37,17 +45,20 @@ jobs:
           else
             HOURS=0
           fi
-          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-          # status.json
-          jq --arg hours "$HOURS" --arg lastChecked "$DATE" \
+          # elapsed seconds since last check
+          ELAPSED=$((NOW_SEC - LAST_SEC))
+          # total uptime seconds
+          TOTAL_SEC=$((HOURS*3600 + ELAPSED))
+
+          # Update status.json
+          jq --arg hours "$HOURS" --arg lastChecked "$NOW" \
              '.hoursUp = ($hours|tonumber) | .lastChecked = $lastChecked' \
              status.json > status.tmp.json
           mv status.tmp.json status.json
 
-          # history.json
-          SECONDS=$((HOURS * 3600))
-          jq --arg seconds "$SECONDS" --arg lastChecked "$DATE" \
+          # Append to history.json
+          jq --arg seconds "$TOTAL_SEC" --arg lastChecked "$NOW" \
              '. += [ { seconds: ($seconds|tonumber), lastChecked: $lastChecked } ]' \
              history.json > history.tmp.json
           mv history.tmp.json history.json
