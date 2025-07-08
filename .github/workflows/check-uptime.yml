@@ -1,6 +1,5 @@
 name: Hourly uptime check
 
-# Grant write permission for updating status.json
 permissions:
   contents: write
 
@@ -13,12 +12,10 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-
     steps:
       - name: 📥 Checkout repo
         uses: actions/checkout@v3
         with:
-          # Ensure GITHUB_TOKEN is used for push
           persist-credentials: true
 
       - name: 🌐 Check target status
@@ -28,7 +25,7 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$TARGET")
           echo "status=$STATUS" >> $GITHUB_OUTPUT
 
-      - name: ⚙️ Update status.json with jq
+      - name: ⚙️ Update uptime files
         run: |
           STATUS=${{ steps.http.outputs.status }}
           HOURS=$(jq '.hoursUp // 0' status.json)
@@ -38,17 +35,26 @@ jobs:
             HOURS=0
           fi
           DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # status.json
           jq --arg hours "$HOURS" --arg lastChecked "$DATE" \
              '.hoursUp = ($hours|tonumber) | .lastChecked = $lastChecked' \
              status.json > status.tmp.json
           mv status.tmp.json status.json
+
+          # history.json
+          SECONDS=$((HOURS * 3600))
+          jq --arg seconds "$SECONDS" --arg lastChecked "$DATE" \
+             '. += [ { seconds: ($seconds|tonumber), lastChecked: $lastChecked } ]' \
+             history.json > history.tmp.json
+          mv history.tmp.json history.json
 
       - name: ✏️ Commit & push changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if [[ -n "$(git status --porcelain)" ]]; then
-            git add status.json
+            git add status.json history.json
             git commit -m "chore: hourly uptime update"
             git push
           else
