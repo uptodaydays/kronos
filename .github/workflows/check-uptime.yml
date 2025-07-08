@@ -9,7 +9,6 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-
     steps:
       - name: 📥 Checkout repo
         uses: actions/checkout@v3
@@ -21,32 +20,20 @@ jobs:
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$TARGET")
           echo "status=$STATUS" >> $GITHUB_OUTPUT
 
-      - name: ⚙️ Update status.json
+      - name: ⚙️ Update status.json with jq
         run: |
-          export STATUS=${{ steps.http.outputs.status }}
-          python3 - << 'EOF'
-import json, datetime, os
-
-# Load existing data
-with open('status.json') as f:
-    data = json.load(f)
-
-# Ensure hoursUp exists
-data.setdefault('hoursUp', 0)
-
-# Increment or reset
-if os.environ.get('STATUS') == '200':
-    data['hoursUp'] += 1
-else:
-    data['hoursUp'] = 0
-
-# UTC ISO timestamp
-data['lastChecked'] = datetime.datetime.utcnow().isoformat() + 'Z'
-
-# Save back
-with open('status.json', 'w') as f:
-    json.dump(data, f, indent=2)
-EOF
+          STATUS=${{ steps.http.outputs.status }}
+          HOURS=$(jq '.hoursUp // 0' status.json)
+          if [ "$STATUS" = "200" ]; then
+            HOURS=$((HOURS + 1))
+          else
+            HOURS=0
+          fi
+          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          jq --arg hours "$HOURS" --arg lastChecked "$DATE" \
+             '.hoursUp = ($hours|tonumber) | .lastChecked = $lastChecked' \
+             status.json > status.tmp.json
+          mv status.tmp.json status.json
 
       - name: ✏️ Commit & push changes
         run: |
