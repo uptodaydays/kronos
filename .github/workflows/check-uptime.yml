@@ -2,7 +2,7 @@ name: Hourly uptime check
 
 on:
   schedule:
-    # Runs every hour at minute 0 UTC
+    # Runs every hour at minute 0 UTC
     - cron: '0 * * * *'
   workflow_dispatch:
 
@@ -22,46 +22,38 @@ jobs:
         id: http
         run: |
           TARGET=$(jq -r .target status.json)
-          # Follow redirects to get final status
+          # Follow redirects and capture final status code
           STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" "$TARGET")
-          echo "Status code: $STATUS"
           echo "status=$STATUS" >> $GITHUB_OUTPUT
 
       - name: ⚙️ Update uptime files
         run: |
-          # Capture previous timestamp
-          LAST_CHECKED=$(jq -r .lastChecked status.json)
-          # Compute current timestamp
-          NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          # Parse into epoch seconds
-          LAST_SEC=$(date -u -d "$LAST_CHECKED" +%s)
-          NOW_SEC=$(date -u -d "$NOW" +%s)
-
           STATUS=${{ steps.http.outputs.status }}
           HOURS=$(jq '.hoursUp // 0' status.json)
-          # Treat any 2xx or 3xx as up
+
           if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
+            # Site is up → increment counter
             HOURS=$((HOURS + 1))
           else
+            # Site just went down → record the completed uptime if > 0
+            if [ "$HOURS" -gt 0 ]; then
+              DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+              SECONDS=$((HOURS * 3600))
+              jq --arg seconds "$SECONDS" --arg lastChecked "$DATE" \
+                '. += [ { seconds: ($seconds|tonumber), lastChecked: $lastChecked } ]' \
+                history.json > history.tmp.json
+              mv history.tmp.json history.json
+            fi
+            # Reset counter
             HOURS=0
           fi
 
-          # elapsed seconds since last check
-          ELAPSED=$((NOW_SEC - LAST_SEC))
-          # total uptime seconds
-          TOTAL_SEC=$((HOURS*3600 + ELAPSED))
-
-          # Update status.json
+          # Always update status.json with new hoursUp & timestamp
+          NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           jq --arg hours "$HOURS" --arg lastChecked "$NOW" \
-             '.hoursUp = ($hours|tonumber) | .lastChecked = $lastChecked' \
-             status.json > status.tmp.json
+            '.hoursUp = ($hours|tonumber) | .lastChecked = $lastChecked' \
+            status.json > status.tmp.json
           mv status.tmp.json status.json
-
-          # Append to history.json
-          jq --arg seconds "$TOTAL_SEC" --arg lastChecked "$NOW" \
-             '. += [ { seconds: ($seconds|tonumber), lastChecked: $lastChecked } ]' \
-             history.json > history.tmp.json
-          mv history.tmp.json history.json
 
       - name: ✏️ Commit & push changes
         run: |
