@@ -68,26 +68,44 @@
     const statusEl = document.getElementById('status');
     fetch(new URL('./status.json', window.location.href))
       .then(response => {
-        if (!response.ok) {
-          throw new Error(`Could not fetch status.json (HTTP ${response.status})`);
-        }
+        if (!response.ok) throw new Error(`Could not fetch status.json (HTTP ${response.status})`);
         return response.json();
       })
       .then(data => {
         if (!data.target || typeof data.hoursUp !== 'number' || !data.lastChecked) {
           throw new Error('status.json has unexpected format');
         }
-        // Format date and time
-        const lastCheckedDate = new Date(data.lastChecked);
-        const datePart = lastCheckedDate.toLocaleDateString();
-        const timePart = lastCheckedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        statusEl.innerHTML = `
-          <div>📡 <strong>Target:</strong> ${data.target}</div>
-          <div>✅ <strong>Has been up for</strong></div>
-          <div class="count">${data.hoursUp} hour${data.hoursUp === 1 ? '' : 's'}</div>
-          <div>🕒 <strong>Last checked:</strong> ${datePart} ${timePart}</div>
-        `;
+        // Base values
+        const target = data.target;
+        const baseHours = data.hoursUp;
+        const lastCheckedDate = new Date(data.lastChecked);
+
+        function updateDisplay() {
+          const now = new Date();
+          // Total seconds since lastChecked plus base hours
+          const elapsedMs = now - lastCheckedDate;
+          const elapsedSec = Math.floor(elapsedMs / 1000);
+          const totalSeconds = baseHours * 3600 + elapsedSec;
+
+          const hours = Math.floor(totalSeconds / 3600);
+          const minutes = Math.floor((totalSeconds % 3600) / 60);
+          const seconds = totalSeconds % 60;
+
+          // Format two-digit minutes/seconds
+          const mm = String(minutes).padStart(2, '0');
+          const ss = String(seconds).padStart(2, '0');
+
+          statusEl.innerHTML = `
+            <div>📡 <strong>Target:</strong> ${target}</div>
+            <div>✅ <strong>Has been up for</strong></div>
+            <div class="count">${hours}h ${mm}m ${ss}s</div>
+            <div>🕒 <strong>Last checked:</strong> ${lastCheckedDate.toLocaleString()}</div>
+          `;
+        }
+
+        updateDisplay();
+        setInterval(updateDisplay, 1000);
       })
       .catch(err => {
         console.error('Error loading/parsing status.json:', err);
