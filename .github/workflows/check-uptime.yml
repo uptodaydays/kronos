@@ -25,28 +25,28 @@ jobs:
         run: |
           export STATUS=${{ steps.http.outputs.status }}
           python3 - << 'EOF'
-            import json, datetime, os
+import json, datetime, os
 
-            # Load existing data
-            with open('status.json') as f:
-                data = json.load(f)
+# Load existing data
+with open('status.json') as f:
+    data = json.load(f)
 
-            # Ensure hoursUp exists
-            data.setdefault('hoursUp', 0)
+# Ensure hoursUp exists
+data.setdefault('hoursUp', 0)
 
-            # Increment or reset
-            if os.environ.get('STATUS') == '200':
-                data['hoursUp'] += 1
-            else:
-                data['hoursUp'] = 0
+# Increment or reset
+if os.environ.get('STATUS') == '200':
+    data['hoursUp'] += 1
+else:
+    data['hoursUp'] = 0
 
-            # UTC ISO timestamp
-            data['lastChecked'] = datetime.datetime.utcnow().isoformat() + 'Z'
+# UTC ISO timestamp
+data['lastChecked'] = datetime.datetime.utcnow().isoformat() + 'Z'
 
-            # Save back
-            with open('status.json', 'w') as f:
-                json.dump(data, f, indent=2)
-          EOF
+# Save back
+with open('status.json', 'w') as f:
+    json.dump(data, f, indent=2)
+EOF
 
       - name: ✏️ Commit & push changes
         run: |
