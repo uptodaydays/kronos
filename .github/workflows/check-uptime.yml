@@ -1,8 +1,5 @@
 name: Hourly uptime check
 
-permissions:
-  contents: write
-
 on:
   schedule:
     # Runs every hour at minute 0 UTC
@@ -11,71 +8,10 @@ on:
 
 jobs:
   check:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
-    steps:
-      - name: 📥 Checkout repo
-        uses: actions/checkout@v3
-        with:
-          persist-credentials: true
 
-      - name: 🌐 Check target status
-        id: http
-        run: |
-          TARGET=$(jq -r .target status.json)
-          # Follow redirects to get final status
-          STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" "$TARGET")
-          echo "Status code: $STATUS"
-          echo "status=$STATUS" >> $GITHUB_OUTPUT
-
-      - name: ⚙️ Update uptime files
-        run: |
-          STATUS=${{ steps.http.outputs.status }}
-          HOURS=$(jq '.hoursUp // 0' status.json)
-          # Treat any 2xx or 3xx as up
-          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
-            HOURS=$((HOURS + 1))
-          else
-            HOURS=0
-          fi
-          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-          # status.json
-          jq --arg hours "$HOURS" --arg lastChecked "$DATE" \
-             '.hoursUp = ($hours|tonumber) | .lastChecked = $lastChecked' \
-             status.json > status.tmp.json
-          mv status.tmp.json status.json
-
-          # history.json
-          SECONDS=$((HOURS * 3600))
-          jq --arg seconds "$SECONDS" --arg lastChecked "$DATE" \
-             '. += [ { seconds: ($seconds|tonumber), lastChecked: $lastChecked } ]' \
-             history.json > history.tmp.json
-          mv history.tmp.json history.json
-
-      - name: ✏️ Commit & push changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [[ -n "$(git status --porcelain)" ]]; then
-            git add status.json history.json
-            git commit -m "chore: hourly uptime update"
-            git push
-          else
-            echo "No changes to commit"
-          finame: Hourly uptime check
-
-permissions:
-  contents: write
-
-on:
-  schedule:
-    # Runs every hour at minute 0 UTC
-    - cron: '0 * * * *'
-  workflow_dispatch:
-
-jobs:
-  check:
-    runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout repo
         uses: actions/checkout@v3
