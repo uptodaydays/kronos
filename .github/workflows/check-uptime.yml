@@ -2,8 +2,8 @@ name: Hourly uptime check
 
 on:
   schedule:
-    # Runs every 30 minutes (at minute 0 and 30 UTC)
-    - cron: '*/30 * * * *'
+    # Runs every 10 minutes (at minute 0 and 10 UTC)
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 
 jobs:
