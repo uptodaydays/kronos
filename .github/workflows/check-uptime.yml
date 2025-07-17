@@ -30,10 +30,12 @@ jobs:
         run: |
           STATUS=${{ steps.http.outputs.status }}
           HOURS=$(jq '.hoursUp // 0' status.json)
+          IS_UP=false
 
           if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
-            # Site still up → increment
+            # Site still up → increment counter
             HOURS=$((HOURS + 1))
+            IS_UP=true
           else
             # Site down → record completed uptime if > 0
             if [ "$HOURS" -gt 0 ]; then
@@ -44,14 +46,17 @@ jobs:
                 history.json > history.tmp.json
               mv history.tmp.json history.json
             fi
-            # Reset counter
+            # Reset counter and mark down
             HOURS=0
+            IS_UP=false
           fi
 
-          # Always update status.json
+          # Always update status.json with new hoursUp, isUp & timestamp
           NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          jq --arg hours "$HOURS" --arg lastChecked "$NOW" \
-            '.hoursUp = ($hours|tonumber) | .lastChecked = $lastChecked' \
+          jq --arg hours "$HOURS" --arg lastChecked "$NOW" --argjson isUp $IS_UP \
+            '.hoursUp = ($hours|tonumber) |
+             .lastChecked = $lastChecked |
+             .isUp = $isUp' \
             status.json > status.tmp.json
           mv status.tmp.json status.json
 
