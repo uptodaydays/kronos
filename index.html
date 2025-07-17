@@ -17,22 +17,31 @@
       text-align: center;
     }
     h1 { font-size: 2.5rem; margin-bottom: 1.5rem; }
+    #up-label { font-size: 1.25rem; margin-bottom: 0.5rem; }
+    #up-value.yes { color: green; font-weight: bold; }
+    #up-value.no { color: red; font-weight: bold; }
     #status {
       width: 100%; max-width: 400px;
       font-size: 1.25rem; padding: 1.5rem;
       border-radius: 8px; background: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      text-align: center;
+      text-align: center; margin-bottom: 2rem;
     }
     .count { font-size: 3rem; font-weight: bold; margin: .5rem 0; }
-    #leaderboard-section { width:100%; max-width:400px; margin-top:2rem; text-align:left; }
-    #leaderboard-section h2 { font-size:1.5rem; margin-bottom: .5rem; }
-    #leaderboard-section ol { padding-left:1.5rem; }
+    #leaderboard-section {
+      width: 100%; max-width: 400px; margin-top: 2rem;
+      text-align: left;
+    }
+    #leaderboard-section h2 { font-size: 1.5rem; margin-bottom: .5rem; }
+    #leaderboard-section ol { padding-left: 1.5rem; }
     .error { color: #c00; }
   </style>
 </head>
 <body>
   <h1>🚀 Uptime monitor for Kronos</h1>
+  <div id="up-label">
+    Is Kronos up? <span id="up-value">Loading…</span>
+  </div>
   <div id="status">Loading…</div>
 
   <div id="leaderboard-section">
@@ -42,6 +51,7 @@
 
   <script>
     const statusEl = document.getElementById('status');
+    const upValue = document.getElementById('up-value');
     const lbEl = document.getElementById('leaderboard');
 
     function fmtHMS(sec) {
@@ -55,6 +65,16 @@
     fetch('status.json')
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(data => {
+        // Up or down label
+        if (data.isUp) {
+          upValue.textContent = 'Yes';
+          upValue.className = 'yes';
+        } else {
+          upValue.textContent = 'No';
+          upValue.className = 'no';
+        }
+
+        // Live HH:MM:SS timer
         const baseSec = data.hoursUp * 3600;
         const last = new Date(data.lastChecked);
         function upd() {
@@ -80,8 +100,9 @@
     fetch('history.json')
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(hist => {
-        // De-duplicate by timestamp
-        const unique = Array.from(new Map(hist.map(e => [e.lastChecked, e])).values());
+        const unique = Array.from(
+          new Map(hist.map(e => [e.lastChecked, e])).values()
+        );
         unique.sort((a, b) => b.seconds - a.seconds);
         lbEl.innerHTML = '';
         unique.slice(0, 10).forEach(entry => {
