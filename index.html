@@ -5,34 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>🚀 Uptime monitor for Kronos</title>
   <style>
-    body {
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      background: #f0f4f8;
-      margin: 0;
-      padding: 2rem;
-      min-height: 100vh;
-      text-align: center;
-    }
+    body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f4f8; margin: 0; padding: 2rem; min-height: 100vh; text-align: center; }
     h1 { font-size: 2.5rem; margin-bottom: 1.5rem; }
     #up-label { font-size: 1.25rem; margin-bottom: 0.5rem; }
     #up-value.yes { color: green; font-weight: bold; }
     #up-value.no { color: red; font-weight: bold; }
-    #status {
-      width: 100%; max-width: 400px;
-      font-size: 1.25rem; padding: 1.5rem;
-      border-radius: 8px; background: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      text-align: center; margin-bottom: 2rem;
-    }
-    .count { font-size: 3rem; font-weight: bold; margin: .5rem 0; }
-    #leaderboard-section {
-      width: 100%; max-width: 400px; margin-top: 2rem;
-      text-align: left;
-    }
-    #leaderboard-section h2 { font-size: 1.5rem; margin-bottom: .5rem; }
+    #status { width: 100%; max-width: 400px; font-size: 1.25rem; padding: 1.5rem; border-radius: 8px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; margin-bottom: 2rem; }
+    .count { font-size: 3rem; font-weight: bold; margin: 0.5rem 0; }
+    #leaderboard-section { width: 100%; max-width: 400px; margin-top: 2rem; text-align: left; }
+    #leaderboard-section h2 { font-size: 1.5rem; margin-bottom: 0.5rem; }
     #leaderboard-section ol { padding-left: 1.5rem; }
     .error { color: #c00; }
   </style>
@@ -54,18 +35,25 @@
     const upValue = document.getElementById('up-value');
     const lbEl = document.getElementById('leaderboard');
 
+    // Helpers
     function fmtHMS(sec) {
-      const h = String(Math.floor(sec/3600)).padStart(2,'0');
-      const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
-      const s = String(sec%60).padStart(2,'0');
+      const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+      const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+      const s = String(sec % 60).padStart(2, '0');
       return `${h}:${m}:${s}`;
+    }
+    function fmtDHM(sec) {
+      const days = Math.floor(sec / 86400);
+      const hours = Math.floor((sec % 86400) / 3600);
+      const mins = Math.floor((sec % 3600) / 60);
+      return `${days}d ${hours}h ${mins}m`;
     }
 
     // Load uptime status
     fetch('status.json')
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(data => {
-        // Up or down label
+        // Up/down label
         if (data.isUp) {
           upValue.textContent = 'Yes';
           upValue.className = 'yes';
@@ -74,34 +62,29 @@
           upValue.className = 'no';
         }
 
+        // Timer logic: only run if site is up
         const baseSec = data.hoursUp * 3600;
         const last = new Date(data.lastChecked);
-
-        function upd() {
-          const elapsed = Math.floor((Date.now() - last) / 1000);
-          const total = baseSec + elapsed;
+        function render(totalSec) {
           statusEl.innerHTML = `
             <div>📡 <strong>Target:</strong></div>
-            <div>\${data.target}</div>
+            <div>${data.target}</div>
             <div>✅ <strong>Has been up for</strong></div>
-            <div class="count">\${fmtHMS(total)}</div>
-            <div>🕒 <strong>Last checked:</strong> \${last.toLocaleString()}</div>
+            <div class="count">${fmtHMS(totalSec)}</div>
+            <div>🕒 <strong>Last checked:</strong> ${last.toLocaleString()}</div>
           `;
         }
-
-        // Only start the live timer if site is currently up
         if (data.isUp) {
-          upd();
-          setInterval(upd, 1000);
+          function updateTimer() {
+            const elapsed = Math.floor((Date.now() - last) / 1000);
+            const total = baseSec + elapsed;
+            render(total);
+          }
+          updateTimer();
+          setInterval(updateTimer, 1000);
         } else {
-          // Show static count when down
-          statusEl.innerHTML = `
-            <div>📡 <strong>Target:</strong></div>
-            <div>\${data.target}</div>
-            <div>✅ <strong>Has been up for</strong></div>
-            <div class="count">\${fmtHMS(baseSec)}</div>
-            <div>🕒 <strong>Last checked:</strong> \${last.toLocaleString()}</div>
-          `;
+          // Site is down → show zeroed timer
+          render(0);
         }
       })
       .catch(e => {
@@ -113,15 +96,13 @@
     fetch('history.json')
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(hist => {
-        const unique = Array.from(
-          new Map(hist.map(e => [e.lastChecked, e])).values()
-        );
+        const unique = Array.from(new Map(hist.map(e => [e.lastChecked, e])).values());
         unique.sort((a, b) => b.seconds - a.seconds);
         lbEl.innerHTML = '';
         unique.slice(0, 10).forEach(entry => {
           const dt = new Date(entry.lastChecked);
           const li = document.createElement('li');
-          li.textContent = `${fmtHMS(entry.seconds)} on ${dt.toLocaleString()}`;
+          li.textContent = `${fmtDHM(entry.seconds)} on ${dt.toLocaleString()}`;
           lbEl.appendChild(li);
         });
       })
@@ -130,4 +111,5 @@
         console.error(e);
       });
   </script>
-</body
+</body>
+</html>
