@@ -74,22 +74,35 @@
           upValue.className = 'no';
         }
 
-        // Live HH:MM:SS timer
         const baseSec = data.hoursUp * 3600;
         const last = new Date(data.lastChecked);
+
         function upd() {
           const elapsed = Math.floor((Date.now() - last) / 1000);
           const total = baseSec + elapsed;
           statusEl.innerHTML = `
             <div>📡 <strong>Target:</strong></div>
-            <div>${data.target}</div>
+            <div>\${data.target}</div>
             <div>✅ <strong>Has been up for</strong></div>
-            <div class="count">${fmtHMS(total)}</div>
-            <div>🕒 <strong>Last checked:</strong> ${last.toLocaleString()}</div>
+            <div class="count">\${fmtHMS(total)}</div>
+            <div>🕒 <strong>Last checked:</strong> \${last.toLocaleString()}</div>
           `;
         }
-        upd();
-        setInterval(upd, 1000);
+
+        // Only start the live timer if site is currently up
+        if (data.isUp) {
+          upd();
+          setInterval(upd, 1000);
+        } else {
+          // Show static count when down
+          statusEl.innerHTML = `
+            <div>📡 <strong>Target:</strong></div>
+            <div>\${data.target}</div>
+            <div>✅ <strong>Has been up for</strong></div>
+            <div class="count">\${fmtHMS(baseSec)}</div>
+            <div>🕒 <strong>Last checked:</strong> \${last.toLocaleString()}</div>
+          `;
+        }
       })
       .catch(e => {
         statusEl.textContent = `🛑 Error: ${e}`;
@@ -117,5 +130,4 @@
         console.error(e);
       });
   </script>
-</body>
-</html>
+</body
