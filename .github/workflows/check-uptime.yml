@@ -1,9 +1,9 @@
-name: Hourly uptime check
+name: Uptime check every 5 minutes
 
 on:
   schedule:
-    # Runs every 10 minutes (at minute 0 and 10 UTC)
-    - cron: '*/10 * * * *'
+    # Runs every 5 minutes UTC
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -18,13 +18,13 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: 🌐 Check target status
+      - name: 🌐 Check target status with timeout
         id: http
         run: |
           TARGET=$(jq -r .target status.json)
-          # Follow redirects and capture final status code
-          STATUS=$(curl -L -s -o /dev/null -w "%{http_code}" "$TARGET")
-          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          # Curl with 30s timeout; on timeout or error, treat as failure (000)
+          HTTP=$(curl -L --max-time 30 -s -o /dev/null -w "%{http_code}" "$TARGET" || echo '000')
+          echo "status=$HTTP" >> $GITHUB_OUTPUT
 
       - name: ⚙️ Update uptime files
         run: |
@@ -32,10 +32,10 @@ jobs:
           HOURS=$(jq '.hoursUp // 0' status.json)
 
           if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
-            # Site is up → increment counter
+            # Site still up → increment
             HOURS=$((HOURS + 1))
           else
-            # Site just went down → record the completed uptime if > 0
+            # Site down → record completed uptime if > 0
             if [ "$HOURS" -gt 0 ]; then
               DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
               SECONDS=$((HOURS * 3600))
@@ -48,7 +48,7 @@ jobs:
             HOURS=0
           fi
 
-          # Always update status.json with new hoursUp & timestamp
+          # Always update status.json
           NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           jq --arg hours "$HOURS" --arg lastChecked "$NOW" \
             '.hoursUp = ($hours|tonumber) | .lastChecked = $lastChecked' \
@@ -61,7 +61,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if [[ -n "$(git status --porcelain)" ]]; then
             git add status.json history.json
-            git commit -m "chore: hourly uptime update"
+            git commit -m "chore: uptime update"
             git push
           else
             echo "No changes to commit"
