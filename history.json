@@ -110,5 +110,9 @@
   {
     "seconds": 1512000,
     "lastChecked": "2025-10-21T16:22:54Z"
+  },
+  {
+    "seconds": 3600,
+    "lastChecked": "2025-10-21T16:56:00Z"
   }
 ]
