@@ -114,5 +114,9 @@
   {
     "seconds": 3600,
     "lastChecked": "2025-10-21T16:56:00Z"
+  },
+  {
+    "seconds": 93600,
+    "lastChecked": "2025-10-22T01:10:25Z"
   }
 ]
