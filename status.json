@@ -1,6 +1,6 @@
 {
   "target": "https://qa-sync-kronos-nextgen.st.dev",
-  "hoursUp": 0,
-  "lastChecked": "2025-11-17T10:32:59Z",
-  "isUp": false
+  "hoursUp": 1,
+  "lastChecked": "2025-11-17T10:50:14Z",
+  "isUp": true
 }
