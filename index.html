@@ -266,7 +266,8 @@
   }
 
   /* ── Status bar ─────────────────────────────────────────────── */
-  fetch('status.json').then(function (r) { return r.json(); }).then(function (data) {
+  var DATA_DIR = 'data/kronos-nextgen/';
+  fetch(DATA_DIR + 'status.json').then(function (r) { return r.json(); }).then(function (data) {
     document.getElementById('target-link').href = data.target;
     document.getElementById('target-link').textContent = data.target.replace(/^https?:\/\//, '');
 
@@ -307,8 +308,8 @@
 
   /* ── Load data & build everything ───────────────────────────── */
   Promise.all([
-    fetch('daily.json').then(function (r) { return r.json(); }),
-    fetch('history.json').then(function (r) { return r.json(); }),
+    fetch(DATA_DIR + 'daily.json').then(function (r) { return r.json(); }),
+    fetch(DATA_DIR + 'history.json').then(function (r) { return r.json(); }),
   ]).then(function (results) {
     var daily = results[0];
     var history = results[1];

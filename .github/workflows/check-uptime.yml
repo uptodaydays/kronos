@@ -75,18 +75,11 @@ jobs:
             mv "$DIR/daily.tmp.json" "$DIR/daily.json"
           done
 
-      - name: Copy default target to root for backward compat
-        run: |
-          DEFAULT_ID=$(jq -r '.targets[0].id' config.json)
-          cp "data/$DEFAULT_ID/status.json" status.json
-          cp "data/$DEFAULT_ID/daily.json" daily.json
-          cp "data/$DEFAULT_ID/history.json" history.json
-
       - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/ status.json daily.json history.json config.json
+          git add data/ config.json
           if [[ -n "$(git diff --cached --name-only)" ]]; then
             git commit -m "chore: uptime update"
             git push
