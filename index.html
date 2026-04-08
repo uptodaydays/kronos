@@ -362,8 +362,7 @@
       var pct = d.total > 0 ? d.up / d.total : 0;
       if (pct < 0.99) {
         var downChecks = d.total - d.up;
-        var downMin = downChecks * 5;
-        incidents.push({ date: keys[i], pct: pct, downMin: downMin });
+        incidents.push({ date: keys[i], pct: pct, downChecks: downChecks, totalChecks: d.total });
       }
     }
     var ul = document.getElementById('incidents');
@@ -381,7 +380,7 @@
         '<span class="inc-dot" style="background:' + color + '"></span>' +
         '<span class="inc-date">' + dateStr + '</span>' +
         '<span class="inc-pct" style="color:' + color + '">' + (inc.pct * 100).toFixed(1) + '%</span>' +
-        '<span class="inc-detail">~' + fmtDHM(inc.downMin * 60) + ' down</span>';
+        '<span class="inc-detail">' + inc.downChecks + '/' + inc.totalChecks + ' checks failed</span>';
       ul.appendChild(li);
     });
   }
@@ -415,13 +414,11 @@
       var y = parseInt(parts[0]), m = parseInt(parts[1]) - 1;
       var entry = byMonth[key];
       var pct = entry.total > 0 ? entry.up / entry.total : 0;
-      var totalSec = entry.total * CHECK_SECS;
-      var downSec = (entry.total - entry.up) * CHECK_SECS;
       months.push({
         date: new Date(y, m, 15),
         uptime: pct,
-        downSec: downSec,
-        totalSec: totalSec,
+        upChecks: entry.up,
+        totalChecks: entry.total,
         label: new Date(y, m).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
       });
     }
@@ -457,9 +454,11 @@
               title: function (items) { return months[items[0].dataIndex].label; },
               label: function (item) {
                 var m = months[item.dataIndex];
+                var downChecks = m.totalChecks - m.upChecks;
                 return [
                   'Uptime: ' + (m.uptime * 100).toFixed(2) + '%',
-                  'Downtime: ' + fmtDHM(Math.round(m.downSec))
+                  'Checks: ' + m.upChecks + '/' + m.totalChecks + ' passed',
+                  'Failed: ' + downChecks + ' check' + (downChecks !== 1 ? 's' : '')
                 ];
               }
             }
@@ -554,11 +553,11 @@
               title: function (items) { return days[items[0].dataIndex].label; },
               label: function (item) {
                 var d = days[item.dataIndex];
-                var upMin = d.up * 5;
-                var totalMin = d.total * 5;
+                var downChecks = d.total - d.up;
                 return [
                   'Uptime: ' + (d.uptime * 100).toFixed(1) + '%',
-                  'Up: ' + fmtDHM(upMin * 60) + ' / ' + fmtDHM(totalMin * 60)
+                  'Checks: ' + d.up + '/' + d.total + ' passed',
+                  'Failed: ' + downChecks + ' check' + (downChecks !== 1 ? 's' : '')
                 ];
               }
             }
