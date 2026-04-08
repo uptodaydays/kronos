@@ -132,16 +132,12 @@
     <div class="tabs" id="tabs">
       <div class="tab active" data-tab="monthly">Monthly</div>
       <div class="tab" data-tab="daily">Daily</div>
-      <div class="tab" data-tab="streaks">Streaks</div>
     </div>
     <div class="chart-wrap" id="wrap-monthly">
       <canvas id="chartMonthly"></canvas>
     </div>
     <div class="chart-wrap hidden" id="wrap-daily">
       <canvas id="chartDaily"></canvas>
-    </div>
-    <div class="chart-wrap hidden" id="wrap-streaks">
-      <canvas id="chartStreaks"></canvas>
     </div>
   </div>
 
@@ -243,7 +239,6 @@
     var history = results[1];
     buildMonthlyChart(daily);
     buildDailyChart(daily);
-    buildStreaksChart(history);
     buildLeaderboard(history);
   });
 
@@ -446,62 +441,6 @@
     });
   }
 
-  /* ── Streaks chart (from history.json) ──────────────────────── */
-  function buildStreaksChart(history) {
-    var entries = history.map(function (e) {
-      var realSec = e.seconds * CORRECTION;
-      return { x: new Date(e.lastChecked).getTime(), y: realSec / 86400 };
-    });
-    var colors = entries.map(function (p) {
-      if (p.y >= 7) return COLOR_OK;
-      if (p.y >= 1) return COLOR_WARN;
-      return COLOR_BAD;
-    });
-
-    new Chart(document.getElementById('chartStreaks').getContext('2d'), {
-      type: 'bar',
-      data: {
-        datasets: [{
-          label: 'Streak Duration',
-          data: entries,
-          backgroundColor: colors.map(function (c) { return c + '99'; }),
-          borderColor: colors,
-          borderWidth: 1,
-          barPercentage: 0.85,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: Object.assign({}, M3_TOOLTIP, {
-            callbacks: {
-              title: function (items) {
-                return new Date(items[0].parsed.x).toLocaleDateString(undefined, {
-                  month: 'short', day: 'numeric', year: 'numeric'
-                });
-              },
-              label: function (item) {
-                return 'Streak: ' + fmtDHM(Math.round(item.parsed.y * 86400));
-              }
-            }
-          })
-        },
-        scales: {
-          x: {
-            type: 'time', time: { unit: 'month', tooltipFormat: 'MMM dd, yyyy' },
-            grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR }
-          },
-          y: {
-            title: { display: true, text: 'Duration (days)', color: TICK_COLOR },
-            grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR },
-            beginAtZero: true
-          }
-        }
-      }
-    });
-  }
-
   /* ── Tabs ────────────────────────────────────────────────────── */
   document.getElementById('tabs').addEventListener('click', function (e) {
     var tab = e.target.closest('.tab');
@@ -509,7 +448,7 @@
     document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
     tab.classList.add('active');
     var target = tab.getAttribute('data-tab');
-    ['monthly', 'daily', 'streaks'].forEach(function (id) {
+    ['monthly', 'daily'].forEach(function (id) {
       document.getElementById('wrap-' + id).classList.toggle('hidden', target !== id);
     });
   });
