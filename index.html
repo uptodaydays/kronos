@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kronos Uptime Monitor</title>
+  <meta property="og:title" content="Kronos Uptime Monitor" />
+  <meta property="og:description" content="Live uptime monitoring dashboard for qa-sync-kronos-nextgen.st.dev — historical charts, daily/monthly trends, and incident tracking." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://uptodaydays.github.io/kronos/" />
+  <meta name="description" content="Live uptime monitoring dashboard for qa-sync-kronos-nextgen.st.dev" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%23386A20'/></svg>" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
@@ -100,6 +106,35 @@
       font-size: 0.8rem; color: #79747E; margin-top: 0.35rem;
     }
 
+    .stats-row {
+      display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .stat-card {
+      flex: 1; min-width: 140px; text-align: center; padding: 1.25rem 1rem;
+      background: #FFFBFE; border-radius: 16px;
+      box-shadow: 0 1px 3px 1px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .stat-card .stat-value {
+      font-family: 'Google Sans', sans-serif; font-size: 2rem; font-weight: 500;
+      color: #1D1B20;
+    }
+    .stat-card .stat-label {
+      font-size: 0.8rem; color: #49454F; margin-top: 0.25rem;
+    }
+
+    .incidents li {
+      padding: 0.55rem 0; border-bottom: 1px solid #E7E0EC;
+      display: flex; align-items: center; gap: 0.75rem; font-size: 0.88rem;
+    }
+    .incidents li:last-child { border-bottom: none; }
+    .incidents .inc-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .incidents .inc-date { font-weight: 500; color: #1D1B20; min-width: 110px; }
+    .incidents .inc-pct { font-weight: 500; min-width: 50px; }
+    .incidents .inc-detail { color: #49454F; font-size: 0.82rem; margin-left: auto; }
+    .incidents .empty { color: #49454F; padding: 1rem 0; font-size: 0.9rem; }
+
     .footer {
       text-align: center; margin-top: 2rem; color: #79747E; font-size: 0.8rem;
     }
@@ -127,6 +162,21 @@
     <div class="target" id="counter-checked"></div>
   </div>
 
+  <div class="stats-row" id="stats-row">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-alltime">--%</div>
+      <div class="stat-label">All-time Uptime</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-30d">--%</div>
+      <div class="stat-label">Last 30 Days</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-7d">--%</div>
+      <div class="stat-label">Last 7 Days</div>
+    </div>
+  </div>
+
   <div class="card">
     <h2>Historical Uptime</h2>
     <div class="tabs" id="tabs">
@@ -139,6 +189,11 @@
     <div class="chart-wrap hidden" id="wrap-daily">
       <canvas id="chartDaily"></canvas>
     </div>
+  </div>
+
+  <div class="card incidents">
+    <h2>Recent Incidents</h2>
+    <ul id="incidents" style="list-style:none;padding:0;margin:0;"><li class="empty">Loading…</li></ul>
   </div>
 
   <div class="card leaderboard">
@@ -182,6 +237,26 @@
     padding: 12,
     titleFont: { family: 'Google Sans Text', weight: '500' },
     bodyFont: { family: 'Google Sans Text' },
+  };
+
+  var crosshairPlugin = {
+    id: 'crosshair',
+    afterDraw: function (chart) {
+      if (chart.tooltip && chart.tooltip._active && chart.tooltip._active.length) {
+        var x = chart.tooltip._active[0].element.x;
+        var yAxis = chart.scales.y;
+        var ctx = chart.ctx;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x, yAxis.top);
+        ctx.lineTo(x, yAxis.bottom);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(103,80,164,0.3)';
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
   };
 
   function uptimeColor(pct) {
@@ -237,10 +312,78 @@
   ]).then(function (results) {
     var daily = results[0];
     var history = results[1];
+    buildStats(daily);
     buildMonthlyChart(daily);
     buildDailyChart(daily);
+    buildIncidents(daily);
     buildLeaderboard(history);
   });
+
+  /* ── Overall stats ───────────────────────────────────────────── */
+  function buildStats(daily) {
+    var keys = Object.keys(daily).sort();
+    var allUp = 0, allTotal = 0;
+    keys.forEach(function (k) { allUp += daily[k].up; allTotal += daily[k].total; });
+    var allPct = allTotal > 0 ? (allUp / allTotal * 100) : 0;
+    document.getElementById('stat-alltime').textContent = allPct.toFixed(2) + '%';
+    document.getElementById('stat-alltime').style.color = uptimeColor(allUp / allTotal);
+
+    var now = new Date();
+    function daysAgo(n) {
+      var d = new Date(now); d.setUTCDate(d.getUTCDate() - n);
+      return d.toISOString().slice(0, 10);
+    }
+    function calcRange(n) {
+      var cutoff = daysAgo(n), up = 0, total = 0;
+      keys.forEach(function (k) {
+        if (k >= cutoff) { up += daily[k].up; total += daily[k].total; }
+      });
+      return total > 0 ? (up / total) : null;
+    }
+    var p30 = calcRange(30);
+    var p7 = calcRange(7);
+    if (p30 !== null) {
+      document.getElementById('stat-30d').textContent = (p30 * 100).toFixed(2) + '%';
+      document.getElementById('stat-30d').style.color = uptimeColor(p30);
+    }
+    if (p7 !== null) {
+      document.getElementById('stat-7d').textContent = (p7 * 100).toFixed(2) + '%';
+      document.getElementById('stat-7d').style.color = uptimeColor(p7);
+    }
+  }
+
+  /* ── Recent incidents (days with < 99% uptime) ───────────────── */
+  function buildIncidents(daily) {
+    var keys = Object.keys(daily).sort().reverse();
+    var incidents = [];
+    for (var i = 0; i < keys.length && incidents.length < 15; i++) {
+      var d = daily[keys[i]];
+      var pct = d.total > 0 ? d.up / d.total : 0;
+      if (pct < 0.99) {
+        var downChecks = d.total - d.up;
+        var downMin = downChecks * 5;
+        incidents.push({ date: keys[i], pct: pct, downMin: downMin });
+      }
+    }
+    var ul = document.getElementById('incidents');
+    ul.innerHTML = '';
+    if (incidents.length === 0) {
+      ul.innerHTML = '<li class="empty">No incidents found — all monitored days above 99% uptime.</li>';
+      return;
+    }
+    incidents.forEach(function (inc) {
+      var li = document.createElement('li');
+      var dt = new Date(inc.date + 'T12:00:00Z');
+      var dateStr = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      var color = uptimeColor(inc.pct);
+      li.innerHTML =
+        '<span class="inc-dot" style="background:' + color + '"></span>' +
+        '<span class="inc-date">' + dateStr + '</span>' +
+        '<span class="inc-pct" style="color:' + color + '">' + (inc.pct * 100).toFixed(1) + '%</span>' +
+        '<span class="inc-detail">~' + fmtDHM(inc.downMin * 60) + ' down</span>';
+      ul.appendChild(li);
+    });
+  }
 
   /* ── Monthly chart (aggregated from daily.json) ─────────────── */
   function buildMonthlyChart(daily) {
@@ -287,6 +430,7 @@
 
     new Chart(document.getElementById('chartMonthly').getContext('2d'), {
       type: 'line',
+      plugins: [crosshairPlugin],
       data: {
         datasets: [{
           label: 'Monthly Uptime',
@@ -379,6 +523,7 @@
 
     new Chart(document.getElementById('chartDaily').getContext('2d'), {
       type: 'line',
+      plugins: [crosshairPlugin],
       data: {
         datasets: [{
           label: 'Daily Uptime',
