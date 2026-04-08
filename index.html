@@ -7,76 +7,88 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Text:wght@400;500&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f6f8fa;
-      color: #1f2328;
+      font-family: 'Google Sans Text', 'Google Sans', 'Segoe UI', Roboto, sans-serif;
+      background: #FEF7FF;
+      color: #1D1B20;
       min-height: 100vh;
       padding: 2rem 1rem;
     }
     .container { max-width: 960px; margin: 0 auto; }
-    h1 { font-size: 2rem; color: #1f2328; margin-bottom: 0.25rem; text-align: center; }
-    .subtitle {
-      text-align: center; color: #656d76; margin-bottom: 2rem; font-size: 0.95rem;
+    h1 {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 2rem; font-weight: 500; color: #1D1B20;
+      margin-bottom: 0.25rem; text-align: center;
     }
-    .subtitle a { color: #0969da; text-decoration: none; }
+    .subtitle {
+      text-align: center; color: #49454F; margin-bottom: 2rem; font-size: 0.95rem;
+    }
+    .subtitle a { color: #6750A4; text-decoration: none; font-weight: 500; }
     .subtitle a:hover { text-decoration: underline; }
 
     .status-bar {
       display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1rem;
-      padding: 0.75rem 1.25rem; background: #fff; border: 1px solid #d0d7de;
-      border-radius: 8px; margin-bottom: 1.5rem;
+      padding: 1rem 1.5rem; background: #F3EDF7; border: none;
+      border-radius: 28px; margin-bottom: 1.5rem;
     }
     .status-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 1.05rem; }
     .status-dot {
-      width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+      width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0;
     }
-    .status-dot.up   { background: #1a7f37; box-shadow: 0 0 6px rgba(26,127,55,0.4); }
-    .status-dot.down { background: #cf222e; box-shadow: 0 0 6px rgba(207,34,46,0.4); }
-    .status-text { font-weight: 600; }
-    .status-text.up   { color: #1a7f37; }
-    .status-text.down { color: #cf222e; }
-    .status-meta { color: #656d76; font-size: 0.85rem; }
-    .status-timer { font-family: 'SF Mono', 'Menlo', monospace; color: #1f2328; font-size: 0.95rem; }
+    .status-dot.up   { background: #386A20; box-shadow: 0 0 0 3px rgba(56,106,32,0.2); }
+    .status-dot.down { background: #B3261E; box-shadow: 0 0 0 3px rgba(179,38,30,0.2); }
+    .status-text { font-weight: 500; }
+    .status-text.up   { color: #386A20; }
+    .status-text.down { color: #B3261E; }
+    .status-meta { color: #49454F; font-size: 0.85rem; }
+    .status-timer { font-family: 'Google Sans', monospace; color: #1D1B20; font-size: 0.95rem; font-weight: 500; }
 
     .card {
-      background: #fff; border: 1px solid #d0d7de; border-radius: 8px;
+      background: #FFFBFE; border: none; border-radius: 16px;
       padding: 1.5rem; margin-bottom: 1.5rem;
+      box-shadow: 0 1px 3px 1px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
     }
-    .card h2 { font-size: 1.2rem; color: #1f2328; margin-bottom: 1rem; }
+    .card h2 {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 1.2rem; font-weight: 500; color: #1D1B20; margin-bottom: 1rem;
+    }
 
-    .tabs { display: flex; gap: 0; border-bottom: 1px solid #d0d7de; margin-bottom: 1rem; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 1.25rem; }
     .tab {
-      padding: 0.5rem 1rem; cursor: pointer; color: #656d76;
-      border-bottom: 2px solid transparent; font-size: 0.9rem;
-      transition: color 0.15s, border-color 0.15s; user-select: none;
+      padding: 0.5rem 1.25rem; cursor: pointer; color: #49454F;
+      border: none; border-radius: 100px; font-size: 0.875rem; font-weight: 500;
+      transition: background 0.2s, color 0.2s; user-select: none;
+      font-family: 'Google Sans Text', sans-serif;
     }
-    .tab:hover { color: #1f2328; }
-    .tab.active { color: #1f2328; border-bottom-color: #f78166; }
+    .tab:hover { background: #E8DEF8; color: #1D1B20; }
+    .tab.active { background: #EADDFF; color: #21005D; }
 
     .chart-wrap { position: relative; width: 100%; height: 360px; }
     .chart-wrap.hidden { display: none; }
 
     .leaderboard ol { list-style: none; counter-reset: lb; padding: 0; }
     .leaderboard li {
-      counter-increment: lb; padding: 0.55rem 0; border-bottom: 1px solid #eaeef2;
-      display: flex; align-items: center; gap: 0.75rem; font-size: 0.92rem;
+      counter-increment: lb; padding: 0.65rem 0; border-bottom: 1px solid #E7E0EC;
+      display: flex; align-items: center; gap: 0.85rem; font-size: 0.92rem;
     }
     .leaderboard li:last-child { border-bottom: none; }
     .leaderboard li::before {
       content: counter(lb); display: flex; align-items: center; justify-content: center;
-      min-width: 22px; height: 22px; background: #eaeef2; border-radius: 50%;
-      font-size: 0.7rem; color: #656d76; flex-shrink: 0;
+      min-width: 26px; height: 26px; background: #EADDFF; border-radius: 50%;
+      font-size: 0.75rem; font-weight: 500; color: #6750A4; flex-shrink: 0;
     }
-    .lb-dur { font-weight: 600; color: #1f2328; }
-    .lb-date { color: #656d76; font-size: 0.82rem; margin-left: auto; white-space: nowrap; }
+    .lb-dur { font-weight: 500; color: #1D1B20; }
+    .lb-date { color: #49454F; font-size: 0.82rem; margin-left: auto; white-space: nowrap; }
 
     .footer {
-      text-align: center; margin-top: 2rem; color: #8c959f; font-size: 0.8rem;
+      text-align: center; margin-top: 2rem; color: #79747E; font-size: 0.8rem;
     }
-    .footer a { color: #0969da; text-decoration: none; }
+    .footer a { color: #6750A4; text-decoration: none; font-weight: 500; }
   </style>
 </head>
 <body>
@@ -126,11 +138,11 @@
 <script>
 (function () {
   var CORRECTION = 1 / 12;
-  var COLOR_OK   = '#1a7f37';
-  var COLOR_WARN = '#9a6700';
-  var COLOR_BAD  = '#cf222e';
-  var GRID_COLOR = '#eaeef2';
-  var TICK_COLOR = '#656d76';
+  var COLOR_OK   = '#386A20';
+  var COLOR_WARN = '#7C5800';
+  var COLOR_BAD  = '#B3261E';
+  var GRID_COLOR = '#E7E0EC';
+  var TICK_COLOR = '#49454F';
   var CHECK_SECS = 300; // 5 min per check
 
   function fmtHMS(sec) {
@@ -145,6 +157,17 @@
     var m = Math.floor((sec % 3600) / 60);
     return d + 'd ' + h + 'h ' + m + 'm';
   }
+  var M3_TOOLTIP = {
+    backgroundColor: '#322F35',
+    titleColor: '#E6E0E9',
+    bodyColor: '#E6E0E9',
+    borderWidth: 0,
+    cornerRadius: 12,
+    padding: 12,
+    titleFont: { family: 'Google Sans Text', weight: '500' },
+    bodyFont: { family: 'Google Sans Text' },
+  };
+
   function uptimeColor(pct) {
     if (pct >= 0.99) return COLOR_OK;
     if (pct >= 0.90) return COLOR_WARN;
@@ -243,7 +266,7 @@
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: {
+          tooltip: Object.assign({}, M3_TOOLTIP, {
             callbacks: {
               title: function (items) { return months[items[0].dataIndex].label; },
               label: function (item) {
@@ -254,15 +277,16 @@
                 ];
               }
             }
-          },
+          }),
           annotation: {
             annotations: {
               sla99: {
                 type: 'line', yMin: 0.99, yMax: 0.99,
-                borderColor: 'rgba(26,127,55,0.4)', borderWidth: 1, borderDash: [6, 4],
+                borderColor: 'rgba(56,106,32,0.35)', borderWidth: 1, borderDash: [6, 4],
                 label: {
                   display: true, content: '99%', position: 'start',
-                  backgroundColor: 'rgba(26,127,55,0.1)', color: '#1a7f37', font: { size: 10 }
+                  backgroundColor: '#C4EEAD', color: '#386A20',
+                  font: { size: 10, family: 'Google Sans Text' }, borderRadius: 100, padding: { top: 2, bottom: 2, left: 6, right: 6 }
                 }
               }
             }
@@ -322,7 +346,7 @@
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: {
+          tooltip: Object.assign({}, M3_TOOLTIP, {
             callbacks: {
               title: function (items) { return days[items[0].dataIndex].label; },
               label: function (item) {
@@ -335,15 +359,16 @@
                 ];
               }
             }
-          },
+          }),
           annotation: {
             annotations: {
               sla99: {
                 type: 'line', yMin: 0.99, yMax: 0.99,
-                borderColor: 'rgba(26,127,55,0.4)', borderWidth: 1, borderDash: [6, 4],
+                borderColor: 'rgba(56,106,32,0.35)', borderWidth: 1, borderDash: [6, 4],
                 label: {
                   display: true, content: '99%', position: 'start',
-                  backgroundColor: 'rgba(26,127,55,0.1)', color: '#1a7f37', font: { size: 10 }
+                  backgroundColor: '#C4EEAD', color: '#386A20',
+                  font: { size: 10, family: 'Google Sans Text' }, borderRadius: 100, padding: { top: 2, bottom: 2, left: 6, right: 6 }
                 }
               }
             }
@@ -392,7 +417,7 @@
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: {
+          tooltip: Object.assign({}, M3_TOOLTIP, {
             callbacks: {
               title: function (items) {
                 return new Date(items[0].parsed.x).toLocaleDateString(undefined, {
@@ -403,7 +428,7 @@
                 return 'Streak: ' + fmtDHM(Math.round(item.parsed.y * 86400));
               }
             }
-          }
+          })
         },
         scales: {
           x: {
