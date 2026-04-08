@@ -338,7 +338,7 @@
             grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR }
           },
           y: {
-            min: Math.max(0, Math.min.apply(null, months.filter(function (m) { return m.uptime !== null; }).map(function (m) { return m.uptime; })) - 0.03),
+            min: Math.max(0.85, Math.min.apply(null, months.filter(function (m) { return m.uptime !== null; }).map(function (m) { return m.uptime; })) - 0.03),
             max: 1.005,
             grid: { color: GRID_COLOR },
             ticks: { color: TICK_COLOR, callback: function (v) { return (v * 100).toFixed(1) + '%'; } }
@@ -384,11 +384,14 @@
           data: points,
           pointBackgroundColor: colors,
           pointBorderColor: colors,
-          pointRadius: 2,
+          pointRadius: function (ctx) {
+            var d = days[ctx.dataIndex];
+            return (d && d.uptime !== null && d.uptime < 0.99) ? 4 : 1.5;
+          },
           pointHoverRadius: 5,
-          segment: { borderColor: function (ctx) { return colors[ctx.p1DataIndex]; } },
+          borderColor: COLOR_OK,
           borderWidth: 1.5,
-          tension: 0,
+          tension: 0.1,
           fill: false,
           spanGaps: false,
         }]
@@ -432,7 +435,7 @@
             grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR }
           },
           y: {
-            min: 0, max: 1.005,
+            min: 0.85, max: 1.005,
             grid: { color: GRID_COLOR },
             ticks: { color: TICK_COLOR, callback: function (v) { return (v * 100).toFixed(0) + '%'; } }
           }
