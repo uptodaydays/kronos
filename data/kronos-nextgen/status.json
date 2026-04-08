@@ -1,7 +1,7 @@
 {
   "target": "https://qa-sync-kronos-nextgen.st.dev",
-  "hoursUp": 9,
-  "lastChecked": "2026-04-08T14:18:51Z",
+  "hoursUp": 10,
+  "lastChecked": "2026-04-08T15:50:12Z",
   "isUp": true,
   "httpStatus": 308
 }
