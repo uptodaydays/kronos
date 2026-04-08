@@ -339,9 +339,9 @@
           },
           y: {
             min: Math.max(0.85, Math.min.apply(null, months.filter(function (m) { return m.uptime !== null; }).map(function (m) { return m.uptime; })) - 0.03),
-            max: 1.005,
+            max: 1.0,
             grid: { color: GRID_COLOR },
-            ticks: { color: TICK_COLOR, callback: function (v) { return (v * 100).toFixed(1) + '%'; } }
+            ticks: { color: TICK_COLOR, callback: function (v) { return Math.round(v * 100) + '%'; } }
           }
         }
       }
@@ -435,9 +435,9 @@
             grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR }
           },
           y: {
-            min: 0.85, max: 1.005,
+            min: 0.85, max: 1.0,
             grid: { color: GRID_COLOR },
-            ticks: { color: TICK_COLOR, callback: function (v) { return (v * 100).toFixed(0) + '%'; } }
+            ticks: { color: TICK_COLOR, callback: function (v) { return Math.round(v * 100) + '%'; } }
           }
         }
       }
