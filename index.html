@@ -3,116 +3,455 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>🚀 Uptime monitor for Kronos</title>
+  <title>Kronos Uptime Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
   <style>
-    body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f4f8; margin: 0; padding: 2rem; min-height: 100vh; text-align: center; }
-    h1 { font-size: 2.5rem; margin-bottom: 1.5rem; }
-    #up-label {
-      font-size: 2rem;
-      margin-bottom: 1.5rem;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      padding: 2rem 1rem;
     }
-    #up-value.yes { color: green; font-weight: bold; }
-    #up-value.no { color: red; font-weight: bold; }
-    #status { width: 100%; max-width: 400px; font-size: 1.25rem; padding: 1.5rem; border-radius: 8px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; margin-bottom: 2rem; }
-    .count { font-size: 3rem; font-weight: bold; margin: 0.5rem 0; }
-    #leaderboard-section { width: 100%; max-width: 400px; margin-top: 2rem; text-align: left; }
-    #leaderboard-section h2 { font-size: 1.5rem; margin-bottom: 0.5rem; }
-    #leaderboard-section ol { padding-left: 1.5rem; }
-    .error { color: #c00; }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 2rem; color: #f0f6fc; margin-bottom: 0.25rem; text-align: center; }
+    .subtitle {
+      text-align: center; color: #8b949e; margin-bottom: 2rem; font-size: 0.95rem;
+    }
+    .subtitle a { color: #58a6ff; text-decoration: none; }
+    .subtitle a:hover { text-decoration: underline; }
+
+    .status-bar {
+      display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1rem;
+      padding: 0.75rem 1.25rem; background: #161b22; border: 1px solid #30363d;
+      border-radius: 8px; margin-bottom: 1.5rem;
+    }
+    .status-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 1.05rem; }
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+    }
+    .status-dot.up   { background: #3fb950; box-shadow: 0 0 6px rgba(63,185,80,0.5); }
+    .status-dot.down { background: #f85149; box-shadow: 0 0 6px rgba(248,81,73,0.5); }
+    .status-text { font-weight: 600; }
+    .status-text.up   { color: #3fb950; }
+    .status-text.down { color: #f85149; }
+    .status-meta { color: #8b949e; font-size: 0.85rem; }
+    .status-timer { font-family: 'SF Mono', 'Menlo', monospace; color: #f0f6fc; font-size: 0.95rem; }
+
+    .card {
+      background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+      padding: 1.5rem; margin-bottom: 1.5rem;
+    }
+    .card h2 { font-size: 1.2rem; color: #f0f6fc; margin-bottom: 1rem; }
+
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid #30363d; margin-bottom: 1rem; }
+    .tab {
+      padding: 0.5rem 1rem; cursor: pointer; color: #8b949e;
+      border-bottom: 2px solid transparent; font-size: 0.9rem;
+      transition: color 0.15s, border-color 0.15s; user-select: none;
+    }
+    .tab:hover { color: #c9d1d9; }
+    .tab.active { color: #f0f6fc; border-bottom-color: #f78166; }
+
+    .chart-wrap { position: relative; width: 100%; height: 360px; }
+    .chart-wrap.hidden { display: none; }
+
+    .leaderboard ol { list-style: none; counter-reset: lb; padding: 0; }
+    .leaderboard li {
+      counter-increment: lb; padding: 0.55rem 0; border-bottom: 1px solid #21262d;
+      display: flex; align-items: center; gap: 0.75rem; font-size: 0.92rem;
+    }
+    .leaderboard li:last-child { border-bottom: none; }
+    .leaderboard li::before {
+      content: counter(lb); display: flex; align-items: center; justify-content: center;
+      min-width: 22px; height: 22px; background: #30363d; border-radius: 50%;
+      font-size: 0.7rem; color: #8b949e; flex-shrink: 0;
+    }
+    .lb-dur { font-weight: 600; color: #f0f6fc; }
+    .lb-date { color: #8b949e; font-size: 0.82rem; margin-left: auto; white-space: nowrap; }
+
+    .footer {
+      text-align: center; margin-top: 2rem; color: #484f58; font-size: 0.8rem;
+    }
+    .footer a { color: #58a6ff; text-decoration: none; }
   </style>
 </head>
 <body>
-  <h1>🚀 Uptime monitor for Kronos</h1>
-  <div id="up-label">
-    Is Kronos up? <span id="up-value">Loading…</span>
+<div class="container">
+  <h1>Kronos Uptime</h1>
+  <div class="subtitle">
+    Monitoring <a id="target-link" href="#">loading…</a>
   </div>
-  <div id="status">Loading…</div>
 
-  <div id="leaderboard-section">
-    <h2>🏆 Top 10 Max Uptimes</h2>
+  <div class="status-bar" id="status-bar">
+    <div class="status-indicator">
+      <span class="status-dot" id="s-dot"></span>
+      <span class="status-text" id="s-text">Loading…</span>
+    </div>
+    <span class="status-timer" id="s-timer"></span>
+    <span class="status-meta" id="s-meta"></span>
+  </div>
+
+  <div class="card">
+    <h2>Historical Uptime</h2>
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-tab="monthly">Monthly</div>
+      <div class="tab" data-tab="daily">Daily</div>
+      <div class="tab" data-tab="streaks">Streaks</div>
+    </div>
+    <div class="chart-wrap" id="wrap-monthly">
+      <canvas id="chartMonthly"></canvas>
+    </div>
+    <div class="chart-wrap hidden" id="wrap-daily">
+      <canvas id="chartDaily"></canvas>
+    </div>
+    <div class="chart-wrap hidden" id="wrap-streaks">
+      <canvas id="chartStreaks"></canvas>
+    </div>
+  </div>
+
+  <div class="card leaderboard">
+    <h2>Top 10 Longest Uptimes</h2>
     <ol id="leaderboard"><li>Loading…</li></ol>
   </div>
 
-  <script>
-    const statusEl = document.getElementById('status');
-    const upValue = document.getElementById('up-value');
-    const lbEl = document.getElementById('leaderboard');
+  <div class="footer">
+    <a href="https://github.com/uptodaydays/kronos">View source on GitHub</a>
+  </div>
+</div>
 
-    // Helpers
-    function fmtHMS(sec) {
-      const h = String(Math.floor(sec / 3600)).padStart(2, '0');
-      const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
-      const s = String(sec % 60).padStart(2, '0');
-      return `${h}:${m}:${s}`;
+<script>
+(function () {
+  var CORRECTION = 1 / 12;
+  var COLOR_OK   = '#3fb950';
+  var COLOR_WARN = '#d29922';
+  var COLOR_BAD  = '#f85149';
+  var CHECK_SECS = 300; // 5 min per check
+
+  function fmtHMS(sec) {
+    var h = String(Math.floor(sec / 3600)).padStart(2, '0');
+    var m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+    var s = String(sec % 60).padStart(2, '0');
+    return h + ':' + m + ':' + s;
+  }
+  function fmtDHM(sec) {
+    var d = Math.floor(sec / 86400);
+    var h = Math.floor((sec % 86400) / 3600);
+    var m = Math.floor((sec % 3600) / 60);
+    return d + 'd ' + h + 'h ' + m + 'm';
+  }
+  function uptimeColor(pct) {
+    if (pct >= 0.99) return COLOR_OK;
+    if (pct >= 0.90) return COLOR_WARN;
+    return COLOR_BAD;
+  }
+
+  /* ── Status bar ─────────────────────────────────────────────── */
+  fetch('status.json').then(function (r) { return r.json(); }).then(function (data) {
+    document.getElementById('target-link').href = data.target;
+    document.getElementById('target-link').textContent = data.target.replace(/^https?:\/\//, '');
+
+    var dot = document.getElementById('s-dot');
+    var txt = document.getElementById('s-text');
+    var timer = document.getElementById('s-timer');
+    var meta = document.getElementById('s-meta');
+    var last = new Date(data.lastChecked);
+
+    if (data.isUp) {
+      dot.className = 'status-dot up';
+      txt.className = 'status-text up';
+      txt.textContent = 'Operational';
+      var baseSec = data.hoursUp * CHECK_SECS;
+      (function tick() {
+        var elapsed = Math.floor((Date.now() - last) / 1000);
+        timer.textContent = fmtHMS(Math.floor(baseSec + elapsed));
+        requestAnimationFrame(tick);
+      })();
+    } else {
+      dot.className = 'status-dot down';
+      txt.className = 'status-text down';
+      txt.textContent = 'Down';
+      timer.textContent = '';
     }
-    function fmtDHM(sec) {
-      const days = Math.floor(sec / 86400);
-      const hours = Math.floor((sec % 86400) / 3600);
-      const mins = Math.floor((sec % 3600) / 60);
-      return `${days}d ${hours}h ${mins}m`;
-    }
+    meta.textContent = 'Checked ' + last.toLocaleString();
+  });
 
-    // Load uptime status
-    fetch('status.json')
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(data => {
-        // Up/down label
-        if (data.isUp) {
-          upValue.textContent = 'Yes';
-          upValue.className = 'yes';
-        } else {
-          upValue.textContent = 'No';
-          upValue.className = 'no';
-        }
+  /* ── Load data & build everything ───────────────────────────── */
+  Promise.all([
+    fetch('daily.json').then(function (r) { return r.json(); }),
+    fetch('history.json').then(function (r) { return r.json(); }),
+  ]).then(function (results) {
+    var daily = results[0];
+    var history = results[1];
+    buildMonthlyChart(daily);
+    buildDailyChart(daily);
+    buildStreaksChart(history);
+    buildLeaderboard(history);
+  });
 
-        // Timer logic: only run if site is up
-        const baseSec = data.hoursUp * 3600;
-        const last = new Date(data.lastChecked);
-        function render(totalSec) {
-          statusEl.innerHTML = `
-            <div>📡 <strong>Target:</strong></div>
-            <div>${data.target}</div>
-            <div>✅ <strong>Has been up for</strong></div>
-            <div class="count">${fmtHMS(totalSec)}</div>
-            <div>🕒 <strong>Last checked:</strong> ${last.toLocaleString()}</div>
-          `;
-        }
-        if (data.isUp) {
-          function updateTimer() {
-            const elapsed = Math.floor((Date.now() - last) / 1000);
-            const total = baseSec + elapsed;
-            render(total);
+  /* ── Monthly chart (aggregated from daily.json) ─────────────── */
+  function buildMonthlyChart(daily) {
+    var byMonth = {};
+    Object.keys(daily).sort().forEach(function (dateStr) {
+      var key = dateStr.slice(0, 7); // "YYYY-MM"
+      if (!byMonth[key]) byMonth[key] = { up: 0, total: 0 };
+      byMonth[key].up += daily[dateStr].up;
+      byMonth[key].total += daily[dateStr].total;
+    });
+
+    var months = Object.keys(byMonth).sort().map(function (key) {
+      var parts = key.split('-');
+      var y = parseInt(parts[0]), m = parseInt(parts[1]) - 1;
+      var entry = byMonth[key];
+      var pct = entry.total > 0 ? entry.up / entry.total : 0;
+      var totalSec = entry.total * CHECK_SECS;
+      var downSec = (entry.total - entry.up) * CHECK_SECS;
+      return {
+        date: new Date(y, m, 15),
+        uptime: pct,
+        downSec: downSec,
+        totalSec: totalSec,
+        label: new Date(y, m).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+      };
+    });
+
+    var points = months.map(function (m) { return { x: m.date.getTime(), y: m.uptime }; });
+    var colors = months.map(function (m) { return uptimeColor(m.uptime); });
+
+    new Chart(document.getElementById('chartMonthly').getContext('2d'), {
+      type: 'line',
+      data: {
+        datasets: [{
+          label: 'Monthly Uptime',
+          data: points,
+          pointBackgroundColor: colors,
+          pointBorderColor: colors,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          segment: { borderColor: function (ctx) { return colors[ctx.p1DataIndex]; } },
+          borderWidth: 2,
+          tension: 0.15,
+          fill: false,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: function (items) { return months[items[0].dataIndex].label; },
+              label: function (item) {
+                var m = months[item.dataIndex];
+                return [
+                  'Uptime: ' + (m.uptime * 100).toFixed(2) + '%',
+                  'Downtime: ' + fmtDHM(Math.round(m.downSec))
+                ];
+              }
+            }
+          },
+          annotation: {
+            annotations: {
+              sla99: {
+                type: 'line', yMin: 0.99, yMax: 0.99,
+                borderColor: 'rgba(63,185,80,0.3)', borderWidth: 1, borderDash: [6, 4],
+                label: {
+                  display: true, content: '99%', position: 'start',
+                  backgroundColor: 'rgba(63,185,80,0.15)', color: '#3fb950', font: { size: 10 }
+                }
+              }
+            }
           }
-          updateTimer();
-          setInterval(updateTimer, 1000);
-        } else {
-          // Site is down → show zeroed timer
-          render(0);
+        },
+        scales: {
+          x: {
+            type: 'time', time: { unit: 'month', tooltipFormat: 'MMM yyyy' },
+            grid: { color: '#21262d' }, ticks: { color: '#8b949e' }
+          },
+          y: {
+            min: Math.max(0, Math.min.apply(null, months.map(function (m) { return m.uptime; })) - 0.03),
+            max: 1.005,
+            grid: { color: '#21262d' },
+            ticks: { color: '#8b949e', callback: function (v) { return (v * 100).toFixed(1) + '%'; } }
+          }
         }
-      })
-      .catch(e => {
-        statusEl.textContent = `🛑 Error: ${e}`;
-        console.error(e);
-      });
+      }
+    });
+  }
 
-    // Load leaderboard
-    fetch('history.json')
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then(hist => {
-        const unique = Array.from(new Map(hist.map(e => [e.lastChecked, e])).values());
-        unique.sort((a, b) => b.seconds - a.seconds);
-        lbEl.innerHTML = '';
-        unique.slice(0, 10).forEach(entry => {
-          const dt = new Date(entry.lastChecked);
-          const li = document.createElement('li');
-          li.textContent = `${fmtDHM(entry.seconds)} on ${dt.toLocaleString()}`;
-          lbEl.appendChild(li);
-        });
-      })
-      .catch(e => {
-        lbEl.textContent = `⚠️ Leaderboard error: ${e}`;
-        console.error(e);
-      });
-  </script>
+  /* ── Daily chart (from daily.json) ──────────────────────────── */
+  function buildDailyChart(daily) {
+    var days = Object.keys(daily).sort().map(function (dateStr) {
+      var d = daily[dateStr];
+      var pct = d.total > 0 ? d.up / d.total : 0;
+      return {
+        date: new Date(dateStr + 'T12:00:00Z'),
+        uptime: pct,
+        up: d.up, total: d.total,
+        label: new Date(dateStr + 'T12:00:00Z').toLocaleDateString(undefined, {
+          month: 'short', day: 'numeric', year: 'numeric'
+        })
+      };
+    });
+
+    var points = days.map(function (d) { return { x: d.date.getTime(), y: d.uptime }; });
+    var colors = days.map(function (d) { return uptimeColor(d.uptime); });
+
+    new Chart(document.getElementById('chartDaily').getContext('2d'), {
+      type: 'line',
+      data: {
+        datasets: [{
+          label: 'Daily Uptime',
+          data: points,
+          pointBackgroundColor: colors,
+          pointBorderColor: colors,
+          pointRadius: 2,
+          pointHoverRadius: 5,
+          segment: { borderColor: function (ctx) { return colors[ctx.p1DataIndex]; } },
+          borderWidth: 1.5,
+          tension: 0,
+          fill: false,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: function (items) { return days[items[0].dataIndex].label; },
+              label: function (item) {
+                var d = days[item.dataIndex];
+                var upMin = d.up * 5;
+                var totalMin = d.total * 5;
+                return [
+                  'Uptime: ' + (d.uptime * 100).toFixed(1) + '%',
+                  'Up: ' + fmtDHM(upMin * 60) + ' / ' + fmtDHM(totalMin * 60)
+                ];
+              }
+            }
+          },
+          annotation: {
+            annotations: {
+              sla99: {
+                type: 'line', yMin: 0.99, yMax: 0.99,
+                borderColor: 'rgba(63,185,80,0.3)', borderWidth: 1, borderDash: [6, 4],
+                label: {
+                  display: true, content: '99%', position: 'start',
+                  backgroundColor: 'rgba(63,185,80,0.15)', color: '#3fb950', font: { size: 10 }
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'time', time: { unit: 'month', tooltipFormat: 'MMM dd, yyyy' },
+            grid: { color: '#21262d' }, ticks: { color: '#8b949e' }
+          },
+          y: {
+            min: 0, max: 1.005,
+            grid: { color: '#21262d' },
+            ticks: { color: '#8b949e', callback: function (v) { return (v * 100).toFixed(0) + '%'; } }
+          }
+        }
+      }
+    });
+  }
+
+  /* ── Streaks chart (from history.json) ──────────────────────── */
+  function buildStreaksChart(history) {
+    var entries = history.map(function (e) {
+      var realSec = e.seconds * CORRECTION;
+      return { x: new Date(e.lastChecked).getTime(), y: realSec / 86400 };
+    });
+    var colors = entries.map(function (p) {
+      if (p.y >= 7) return COLOR_OK;
+      if (p.y >= 1) return COLOR_WARN;
+      return COLOR_BAD;
+    });
+
+    new Chart(document.getElementById('chartStreaks').getContext('2d'), {
+      type: 'bar',
+      data: {
+        datasets: [{
+          label: 'Streak Duration',
+          data: entries,
+          backgroundColor: colors.map(function (c) { return c + '99'; }),
+          borderColor: colors,
+          borderWidth: 1,
+          barPercentage: 0.85,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: function (items) {
+                return new Date(items[0].parsed.x).toLocaleDateString(undefined, {
+                  month: 'short', day: 'numeric', year: 'numeric'
+                });
+              },
+              label: function (item) {
+                return 'Streak: ' + fmtDHM(Math.round(item.parsed.y * 86400));
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'time', time: { unit: 'month', tooltipFormat: 'MMM dd, yyyy' },
+            grid: { color: '#21262d' }, ticks: { color: '#8b949e' }
+          },
+          y: {
+            title: { display: true, text: 'Duration (days)', color: '#8b949e' },
+            grid: { color: '#21262d' }, ticks: { color: '#8b949e' },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+
+  /* ── Tabs ────────────────────────────────────────────────────── */
+  document.getElementById('tabs').addEventListener('click', function (e) {
+    var tab = e.target.closest('.tab');
+    if (!tab) return;
+    document.querySelectorAll('.tab').forEach(function (t) { t.classList.remove('active'); });
+    tab.classList.add('active');
+    var target = tab.getAttribute('data-tab');
+    ['monthly', 'daily', 'streaks'].forEach(function (id) {
+      document.getElementById('wrap-' + id).classList.toggle('hidden', target !== id);
+    });
+  });
+
+  /* ── Leaderboard ────────────────────────────────────────────── */
+  function buildLeaderboard(history) {
+    var unique = Array.from(new Map(history.map(function (e) {
+      return [e.lastChecked, e];
+    })).values());
+    unique.sort(function (a, b) { return b.seconds - a.seconds; });
+
+    var ol = document.getElementById('leaderboard');
+    ol.innerHTML = '';
+    unique.slice(0, 10).forEach(function (entry) {
+      var dt = new Date(entry.lastChecked);
+      var realSec = entry.seconds * CORRECTION;
+      var li = document.createElement('li');
+      li.innerHTML =
+        '<span class="lb-dur">' + fmtDHM(Math.round(realSec)) + '</span>' +
+        '<span class="lb-date">' + dt.toLocaleDateString(undefined, {
+          month: 'short', day: 'numeric', year: 'numeric'
+        }) + '</span>';
+      ol.appendChild(li);
+    });
+  }
+})();
+</script>
 </body>
 </html>
