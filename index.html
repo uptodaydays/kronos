@@ -85,6 +85,21 @@
     .lb-dur { font-weight: 500; color: #1D1B20; }
     .lb-date { color: #49454F; font-size: 0.82rem; margin-left: auto; white-space: nowrap; }
 
+    .uptime-counter {
+      text-align: center; padding: 1.25rem; margin-bottom: 1.5rem;
+      background: #FFFBFE; border-radius: 16px;
+      box-shadow: 0 1px 3px 1px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .uptime-counter .label { font-size: 0.875rem; color: #49454F; margin-bottom: 0.25rem; }
+    .uptime-counter .timer {
+      font-family: 'Google Sans', monospace; font-size: 3rem; font-weight: 500;
+      color: #1D1B20; letter-spacing: 0.02em;
+    }
+    .uptime-counter .timer.down { color: #B3261E; }
+    .uptime-counter .target {
+      font-size: 0.8rem; color: #79747E; margin-top: 0.35rem;
+    }
+
     .footer {
       text-align: center; margin-top: 2rem; color: #79747E; font-size: 0.8rem;
     }
@@ -103,8 +118,13 @@
       <span class="status-dot" id="s-dot"></span>
       <span class="status-text" id="s-text">Loading…</span>
     </div>
-    <span class="status-timer" id="s-timer"></span>
     <span class="status-meta" id="s-meta"></span>
+  </div>
+
+  <div class="uptime-counter">
+    <div class="label" id="counter-label">Has been up for</div>
+    <div class="timer" id="counter-timer">--:--:--</div>
+    <div class="target" id="counter-checked"></div>
   </div>
 
   <div class="card">
@@ -181,25 +201,33 @@
 
     var dot = document.getElementById('s-dot');
     var txt = document.getElementById('s-text');
-    var timer = document.getElementById('s-timer');
     var meta = document.getElementById('s-meta');
+    var cLabel = document.getElementById('counter-label');
+    var cTimer = document.getElementById('counter-timer');
+    var cChecked = document.getElementById('counter-checked');
     var last = new Date(data.lastChecked);
+
+    cChecked.textContent = 'Last checked: ' + last.toLocaleString();
 
     if (data.isUp) {
       dot.className = 'status-dot up';
       txt.className = 'status-text up';
       txt.textContent = 'Operational';
+      cLabel.textContent = 'Has been up for';
+      cTimer.className = 'timer';
       var baseSec = data.hoursUp * CHECK_SECS;
       (function tick() {
         var elapsed = Math.floor((Date.now() - last) / 1000);
-        timer.textContent = fmtHMS(Math.floor(baseSec + elapsed));
+        cTimer.textContent = fmtHMS(Math.floor(baseSec + elapsed));
         requestAnimationFrame(tick);
       })();
     } else {
       dot.className = 'status-dot down';
       txt.className = 'status-text down';
       txt.textContent = 'Down';
-      timer.textContent = '';
+      cLabel.textContent = 'Currently down';
+      cTimer.className = 'timer down';
+      cTimer.textContent = '00:00:00';
     }
     meta.textContent = 'Checked ' + last.toLocaleString();
   });
