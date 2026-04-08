@@ -1,0 +1,9 @@
+{
+  "targets": [
+    {
+      "id": "kronos-nextgen",
+      "name": "Kronos Nextgen QA",
+      "url": "https://qa-sync-kronos-nextgen.st.dev"
+    }
+  ]
+}

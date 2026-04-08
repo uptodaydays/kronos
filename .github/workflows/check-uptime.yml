@@ -2,7 +2,6 @@ name: Uptime check every 5 minutes
 
 on:
   schedule:
-    # Runs every 5 minutes UTC
     - cron: '*/5 * * * *'
   workflow_dispatch:
 
@@ -13,72 +12,82 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout repo
-        uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
         with:
           persist-credentials: true
 
-      - name: 🌐 Check target status with timeout
-        id: http
+      - name: Check all targets
         run: |
-          TARGET=$(jq -r .target status.json)
-          HTTP=$(curl --max-time 30 -s -o /dev/null -w "%{http_code}" "$TARGET" || echo '000')
-          echo "status=$HTTP" >> $GITHUB_OUTPUT
+          TARGETS=$(jq -c '.targets[]' config.json)
+          echo "$TARGETS" | while IFS= read -r target; do
+            ID=$(echo "$target" | jq -r '.id')
+            URL=$(echo "$target" | jq -r '.url')
+            DIR="data/$ID"
 
-      - name: ⚙️ Update uptime files
-        run: |
-          STATUS=${{ steps.http.outputs.status }}
-          HOURS=$(jq '.hoursUp // 0' status.json)
-          IS_UP=false
+            mkdir -p "$DIR"
 
-          if [ "$STATUS" != "000" ]; then
-            HOURS=$((HOURS + 1))
-            IS_UP=true
-          else
-            if [ "$HOURS" -gt 0 ]; then
-              DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-              SECONDS=$((HOURS * 3600))
-              jq --arg seconds "$SECONDS" --arg lastChecked "$DATE" \
-                '. += [ { seconds: ($seconds|tonumber), lastChecked: $lastChecked } ]' \
-                history.json > history.tmp.json
-              mv history.tmp.json history.json
-            fi
-            HOURS=0
+            HTTP=$(curl --max-time 30 -s -o /dev/null -w "%{http_code}" "$URL" || echo '000')
+            echo "[$ID] HTTP $HTTP for $URL"
+
+            HOURS=$(jq '.hoursUp // 0' "$DIR/status.json")
             IS_UP=false
-          fi
 
-          NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          jq --arg hours "$HOURS" --arg lastChecked "$NOW" --argjson isUp $IS_UP --argjson httpStatus $STATUS \
-            '.hoursUp = ($hours|tonumber) |
-             .lastChecked = $lastChecked |
-             .isUp = $isUp |
-             .httpStatus = $httpStatus' \
-            status.json > status.tmp.json
-          mv status.tmp.json status.json
+            if [ "$HTTP" != "000" ]; then
+              HOURS=$((HOURS + 1))
+              IS_UP=true
+            else
+              if [ "$HOURS" -gt 0 ]; then
+                DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+                SECONDS_VAL=$((HOURS * 3600))
+                jq --arg seconds "$SECONDS_VAL" --arg lastChecked "$DATE" \
+                  '. += [ { seconds: ($seconds|tonumber), lastChecked: $lastChecked } ]' \
+                  "$DIR/history.json" > "$DIR/history.tmp.json"
+                mv "$DIR/history.tmp.json" "$DIR/history.json"
+              fi
+              HOURS=0
+              IS_UP=false
+            fi
 
-      - name: 📊 Update daily history
+            NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            jq --arg hours "$HOURS" --arg lastChecked "$NOW" --argjson isUp $IS_UP --argjson httpStatus "$HTTP" --arg target "$URL" \
+              '.target = $target |
+               .hoursUp = ($hours|tonumber) |
+               .lastChecked = $lastChecked |
+               .isUp = $isUp |
+               .httpStatus = $httpStatus' \
+              "$DIR/status.json" > "$DIR/status.tmp.json"
+            mv "$DIR/status.tmp.json" "$DIR/status.json"
+
+            TODAY=$(date -u +"%Y-%m-%d")
+            UP_INC=0
+            if [ "$HTTP" != "000" ]; then
+              UP_INC=1
+            fi
+            jq --arg date "$TODAY" --argjson upInc $UP_INC \
+              'if .[$date] then
+                 .[$date].total += 1 |
+                 .[$date].up += $upInc
+               else
+                 .[$date] = { up: $upInc, total: 1 }
+               end' \
+              "$DIR/daily.json" > "$DIR/daily.tmp.json"
+            mv "$DIR/daily.tmp.json" "$DIR/daily.json"
+          done
+
+      - name: Copy default target to root for backward compat
         run: |
-          TODAY=$(date -u +"%Y-%m-%d")
-          UP_INC=0
-          if [ "${{ steps.http.outputs.status }}" != "000" ]; then
-            UP_INC=1
-          fi
-          jq --arg date "$TODAY" --argjson upInc $UP_INC \
-            'if .[$date] then
-               .[$date].total += 1 |
-               .[$date].up += $upInc
-             else
-               .[$date] = { up: $upInc, total: 1 }
-             end' \
-            daily.json > daily.tmp.json
-          mv daily.tmp.json daily.json
+          DEFAULT_ID=$(jq -r '.targets[0].id' config.json)
+          cp "data/$DEFAULT_ID/status.json" status.json
+          cp "data/$DEFAULT_ID/daily.json" daily.json
+          cp "data/$DEFAULT_ID/history.json" history.json
 
-      - name: ✏️ Commit & push changes
+      - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if [[ -n "$(git status --porcelain)" ]]; then
-            git add status.json history.json daily.json
+          git add data/ status.json daily.json history.json config.json
+          if [[ -n "$(git diff --cached --name-only)" ]]; then
             git commit -m "chore: uptime update"
             git push
           else
