@@ -207,7 +207,9 @@
     var cChecked = document.getElementById('counter-checked');
     var last = new Date(data.lastChecked);
 
-    cChecked.textContent = 'Last checked: ' + last.toLocaleString();
+    var statusInfo = 'Last checked: ' + last.toLocaleString();
+    if (data.httpStatus) statusInfo += ' (HTTP ' + data.httpStatus + ')';
+    cChecked.textContent = statusInfo;
 
     if (data.isUp) {
       dot.className = 'status-dot up';
@@ -255,24 +257,38 @@
       byMonth[key].total += daily[dateStr].total;
     });
 
-    var months = Object.keys(byMonth).sort().map(function (key) {
+    var sortedMonthKeys = Object.keys(byMonth).sort();
+    var months = [];
+    for (var i = 0; i < sortedMonthKeys.length; i++) {
+      if (i > 0) {
+        var prevParts = sortedMonthKeys[i - 1].split('-');
+        var currParts = sortedMonthKeys[i].split('-');
+        var prevIdx = parseInt(prevParts[0]) * 12 + parseInt(prevParts[1]);
+        var currIdx = parseInt(currParts[0]) * 12 + parseInt(currParts[1]);
+        if (currIdx - prevIdx > 1) {
+          var gapParts = sortedMonthKeys[i - 1].split('-');
+          var gy = parseInt(gapParts[0]), gm = parseInt(gapParts[1]);
+          months.push({ date: new Date(gy, gm, 1), uptime: null, downSec: 0, totalSec: 0, label: 'No data' });
+        }
+      }
+      var key = sortedMonthKeys[i];
       var parts = key.split('-');
       var y = parseInt(parts[0]), m = parseInt(parts[1]) - 1;
       var entry = byMonth[key];
       var pct = entry.total > 0 ? entry.up / entry.total : 0;
       var totalSec = entry.total * CHECK_SECS;
       var downSec = (entry.total - entry.up) * CHECK_SECS;
-      return {
+      months.push({
         date: new Date(y, m, 15),
         uptime: pct,
         downSec: downSec,
         totalSec: totalSec,
         label: new Date(y, m).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
-      };
-    });
+      });
+    }
 
     var points = months.map(function (m) { return { x: m.date.getTime(), y: m.uptime }; });
-    var colors = months.map(function (m) { return uptimeColor(m.uptime); });
+    var colors = months.map(function (m) { return m.uptime === null ? TICK_COLOR : uptimeColor(m.uptime); });
 
     new Chart(document.getElementById('chartMonthly').getContext('2d'), {
       type: 'line',
@@ -288,6 +304,7 @@
           borderWidth: 2,
           tension: 0.15,
           fill: false,
+          spanGaps: false,
         }]
       },
       options: {
@@ -326,7 +343,7 @@
             grid: { color: GRID_COLOR }, ticks: { color: TICK_COLOR }
           },
           y: {
-            min: Math.max(0, Math.min.apply(null, months.map(function (m) { return m.uptime; })) - 0.03),
+            min: Math.max(0, Math.min.apply(null, months.filter(function (m) { return m.uptime !== null; }).map(function (m) { return m.uptime; })) - 0.03),
             max: 1.005,
             grid: { color: GRID_COLOR },
             ticks: { color: TICK_COLOR, callback: function (v) { return (v * 100).toFixed(1) + '%'; } }
@@ -338,21 +355,31 @@
 
   /* ── Daily chart (from daily.json) ──────────────────────────── */
   function buildDailyChart(daily) {
-    var days = Object.keys(daily).sort().map(function (dateStr) {
-      var d = daily[dateStr];
+    var sortedKeys = Object.keys(daily).sort();
+    var days = [];
+    for (var i = 0; i < sortedKeys.length; i++) {
+      // Detect gaps > 2 days and insert a null point to break the line
+      if (i > 0) {
+        var prev = new Date(sortedKeys[i - 1] + 'T12:00:00Z').getTime();
+        var curr = new Date(sortedKeys[i] + 'T12:00:00Z').getTime();
+        if (curr - prev > 2 * 86400000) {
+          days.push({ date: new Date(prev + 86400000), uptime: null, up: 0, total: 0, label: 'No data' });
+        }
+      }
+      var d = daily[sortedKeys[i]];
       var pct = d.total > 0 ? d.up / d.total : 0;
-      return {
-        date: new Date(dateStr + 'T12:00:00Z'),
+      days.push({
+        date: new Date(sortedKeys[i] + 'T12:00:00Z'),
         uptime: pct,
         up: d.up, total: d.total,
-        label: new Date(dateStr + 'T12:00:00Z').toLocaleDateString(undefined, {
+        label: new Date(sortedKeys[i] + 'T12:00:00Z').toLocaleDateString(undefined, {
           month: 'short', day: 'numeric', year: 'numeric'
         })
-      };
-    });
+      });
+    }
 
     var points = days.map(function (d) { return { x: d.date.getTime(), y: d.uptime }; });
-    var colors = days.map(function (d) { return uptimeColor(d.uptime); });
+    var colors = days.map(function (d) { return d.uptime === null ? TICK_COLOR : uptimeColor(d.uptime); });
 
     new Chart(document.getElementById('chartDaily').getContext('2d'), {
       type: 'line',
@@ -368,6 +395,7 @@
           borderWidth: 1.5,
           tension: 0,
           fill: false,
+          spanGaps: false,
         }]
       },
       options: {
@@ -375,6 +403,7 @@
         plugins: {
           legend: { display: false },
           tooltip: Object.assign({}, M3_TOOLTIP, {
+            filter: function (item) { return days[item.dataIndex].uptime !== null; },
             callbacks: {
               title: function (items) { return days[items[0].dataIndex].label; },
               label: function (item) {

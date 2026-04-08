@@ -22,8 +22,7 @@ jobs:
         id: http
         run: |
           TARGET=$(jq -r .target status.json)
-          # Curl with 30s timeout; on timeout or error, treat as failure (000)
-          HTTP=$(curl -L --max-time 30 -s -o /dev/null -w "%{http_code}" "$TARGET" || echo '000')
+          HTTP=$(curl --max-time 30 -s -o /dev/null -w "%{http_code}" "$TARGET" || echo '000')
           echo "status=$HTTP" >> $GITHUB_OUTPUT
 
       - name: ⚙️ Update uptime files
@@ -32,7 +31,7 @@ jobs:
           HOURS=$(jq '.hoursUp // 0' status.json)
           IS_UP=false
 
-          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
+          if [ "$STATUS" != "000" ]; then
             HOURS=$((HOURS + 1))
             IS_UP=true
           else
@@ -49,10 +48,11 @@ jobs:
           fi
 
           NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          jq --arg hours "$HOURS" --arg lastChecked "$NOW" --argjson isUp $IS_UP \
+          jq --arg hours "$HOURS" --arg lastChecked "$NOW" --argjson isUp $IS_UP --argjson httpStatus $STATUS \
             '.hoursUp = ($hours|tonumber) |
              .lastChecked = $lastChecked |
-             .isUp = $isUp' \
+             .isUp = $isUp |
+             .httpStatus = $httpStatus' \
             status.json > status.tmp.json
           mv status.tmp.json status.json
 
@@ -60,7 +60,7 @@ jobs:
         run: |
           TODAY=$(date -u +"%Y-%m-%d")
           UP_INC=0
-          if [ "${{ steps.http.outputs.status }}" -ge 200 ] && [ "${{ steps.http.outputs.status }}" -lt 400 ]; then
+          if [ "${{ steps.http.outputs.status }}" != "000" ]; then
             UP_INC=1
           fi
           jq --arg date "$TODAY" --argjson upInc $UP_INC \
