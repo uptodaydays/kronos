@@ -289,10 +289,10 @@
       txt.textContent = 'Operational';
       cLabel.textContent = 'Has been up for';
       cTimer.className = 'timer';
-      var baseSec = data.hoursUp * CHECK_SECS;
+      var streakOrigin = data.streakStart ? new Date(data.streakStart) : last;
       (function tick() {
-        var elapsed = Math.floor((Date.now() - last) / 1000);
-        cTimer.textContent = fmtHMS(Math.floor(baseSec + elapsed));
+        var totalSec = Math.floor((Date.now() - streakOrigin) / 1000);
+        cTimer.textContent = fmtDHM(totalSec);
         requestAnimationFrame(tick);
       })();
     } else {

@@ -31,11 +31,15 @@ jobs:
             echo "[$ID] HTTP $HTTP for $URL"
 
             HOURS=$(jq '.hoursUp // 0' "$DIR/status.json")
+            STREAK_START=$(jq -r '.streakStart // ""' "$DIR/status.json")
             IS_UP=false
 
             if [ "$HTTP" != "000" ]; then
               HOURS=$((HOURS + 1))
               IS_UP=true
+              if [ -z "$STREAK_START" ]; then
+                STREAK_START=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+              fi
             else
               if [ "$HOURS" -gt 0 ]; then
                 DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -47,15 +51,17 @@ jobs:
               fi
               HOURS=0
               IS_UP=false
+              STREAK_START=""
             fi
 
             NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-            jq --arg hours "$HOURS" --arg lastChecked "$NOW" --argjson isUp $IS_UP --argjson httpStatus "$HTTP" --arg target "$URL" \
+            jq --arg hours "$HOURS" --arg lastChecked "$NOW" --argjson isUp $IS_UP --argjson httpStatus "$HTTP" --arg target "$URL" --arg streakStart "$STREAK_START" \
               '.target = $target |
                .hoursUp = ($hours|tonumber) |
                .lastChecked = $lastChecked |
                .isUp = $isUp |
-               .httpStatus = $httpStatus' \
+               .httpStatus = $httpStatus |
+               .streakStart = (if $streakStart == "" then null else $streakStart end)' \
               "$DIR/status.json" > "$DIR/status.tmp.json"
             mv "$DIR/status.tmp.json" "$DIR/status.json"
 
