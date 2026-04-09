@@ -292,7 +292,9 @@
       var streakOrigin = data.streakStart ? new Date(data.streakStart) : last;
       (function tick() {
         var totalSec = Math.floor((Date.now() - streakOrigin) / 1000);
-        cTimer.textContent = fmtDHM(totalSec);
+        var d = Math.floor(totalSec / 86400);
+        var rest = totalSec % 86400;
+        cTimer.textContent = (d > 0 ? d + 'd ' : '') + fmtHMS(rest);
         requestAnimationFrame(tick);
       })();
     } else {
