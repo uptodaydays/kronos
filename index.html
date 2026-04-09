@@ -217,7 +217,7 @@
   var CHECK_SECS = 300; // 5 min per check
 
   function fmtHMS(sec) {
-    var h = String(Math.floor(sec / 3600)).padStart(2, '0');
+    var h = Math.floor(sec / 3600);
     var m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
     var s = String(sec % 60).padStart(2, '0');
     return h + ':' + m + ':' + s;
